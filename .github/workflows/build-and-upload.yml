@@ -1,0 +1,80 @@
+name: Build and Upload to S3
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GO_VERSION: '1.21'
+  S3_BUCKET: ${{ vars.S3_DEPLOYMENT_BUCKET }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build Lambda function
+      run: |
+        cd src/lambda
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bootstrap main.go
+        zip lambda-deployment.zip bootstrap
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Upload to S3
+      run: |
+        cd src/lambda
+        aws s3 cp lambda-deployment.zip s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-${{ github.sha }}.zip
+        
+        # Also upload as latest for easy reference
+        aws s3 cp lambda-deployment.zip s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-latest.zip
+
+    - name: Create deployment manifest
+      run: |
+        cat > deployment-manifest.json << EOF
+        {
+          "commit_sha": "${{ github.sha }}",
+          "branch": "${{ github.ref_name }}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "s3_key": "lambda-deployments/hello-world-lambda-${{ github.sha }}.zip",
+          "s3_bucket": "${{ env.S3_BUCKET }}"
+        }
+        EOF
+
+    - name: Upload deployment manifest
+      run: |
+        aws s3 cp deployment-manifest.json s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-${{ github.sha }}-manifest.json
+        aws s3 cp deployment-manifest.json s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-latest-manifest.json
+
+    - name: Output deployment info
+      run: |
+        echo "::notice::Lambda deployment package uploaded to S3"
+        echo "::notice::S3 Key: lambda-deployments/hello-world-lambda-${{ github.sha }}.zip"
+        echo "::notice::S3 Bucket: ${{ env.S3_BUCKET }}"
