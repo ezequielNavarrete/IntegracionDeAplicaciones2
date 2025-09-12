@@ -1,0 +1,98 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  S3_BUCKET: ${{ vars.S3_DEPLOYMENT_BUCKET }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.6.0"
+
+    - name: Setup Terragrunt
+      run: |
+        wget -O terragrunt https://github.com/gruntwork-io/terragrunt/releases/download/v0.54.8/terragrunt_linux_amd64
+        chmod +x terragrunt
+        sudo mv terragrunt /usr/local/bin/
+
+    - name: Verify deployment package exists
+      run: |
+        ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
+        echo "Checking for deployment package in S3..."
+        aws s3 ls s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-latest.zip || {
+          echo "::error::Deployment package not found. Please run the build-and-upload workflow first."
+          exit 1
+        }
+
+    - name: Deploy with Terragrunt
+      working-directory: terragrunt/${{ github.event.inputs.environment || 'dev' }}/lambda
+      run: |
+        export TF_VAR_lambda_s3_bucket=${{ env.S3_BUCKET }}
+        export TF_VAR_lambda_s3_key="lambda-deployments/hello-world-lambda-latest.zip"
+        export TF_VAR_environment="${{ github.event.inputs.environment || 'dev' }}"
+        
+        terragrunt init
+        terragrunt plan
+        terragrunt apply -auto-approve
+
+    - name: Get Lambda function URL
+      run: |
+        ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
+        FUNCTION_NAME="hello-world-lambda-${ENVIRONMENT}"
+        
+        # Get the function URL if it exists
+        FUNCTION_URL=$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --query 'FunctionUrl' --output text 2>/dev/null || echo "")
+        
+        if [ -n "$FUNCTION_URL" ] && [ "$FUNCTION_URL" != "None" ]; then
+          echo "::notice::Lambda Function URL: $FUNCTION_URL"
+        fi
+        
+        # Get the function ARN
+        FUNCTION_ARN=$(aws lambda get-function --function-name "$FUNCTION_NAME" --query 'Configuration.FunctionArn' --output text)
+        echo "::notice::Lambda Function ARN: $FUNCTION_ARN"
+
+    - name: Test deployment
+      run: |
+        ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
+        FUNCTION_NAME="hello-world-lambda-${ENVIRONMENT}"
+        
+        echo "Testing Lambda function..."
+        aws lambda invoke \
+          --function-name "$FUNCTION_NAME" \
+          --payload '{"httpMethod": "GET", "path": "/", "requestContext": {"requestId": "test-request", "requestTime": "2024-01-01T00:00:00Z"}}' \
+          response.json
+        
+        echo "Lambda response:"
+        cat response.json
+        echo ""

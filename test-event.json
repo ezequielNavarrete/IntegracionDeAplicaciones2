@@ -1,0 +1,20 @@
+{
+  "httpMethod": "GET",
+  "path": "/",
+  "queryStringParameters": {},
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": "test-agent"
+  },
+  "body": null,
+  "isBase64Encoded": false,
+  "requestContext": {
+    "requestId": "test-request-id-12345",
+    "requestTime": "2024-01-01T12:00:00Z",
+    "httpMethod": "GET",
+    "path": "/",
+    "protocol": "HTTP/1.1",
+    "stage": "test"
+  }
+}
