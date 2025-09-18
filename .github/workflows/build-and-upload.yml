@@ -5,10 +5,13 @@ on:
     inputs:
       branch:
         description: 'Branch to build from'
-        required: true
-        default: 'main'
-        type: string
-
+      workflow_dispatch:
+        inputs:
+          branch:
+            description: 'Branch to build from'
+            required: true
+            default: 'main'
+            type: string
 env:
   GO_VERSION: '1.21'
   S3_BUCKET: ${{ vars.S3_DEPLOYMENT_BUCKET || 'integracionbucket' }}
