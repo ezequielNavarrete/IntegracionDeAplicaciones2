@@ -14,6 +14,7 @@ LAMBDA_ZIP=lambda-deployment.zip
 # AWS parameters
 AWS_REGION ?= us-east-1
 S3_BUCKET ?= $(S3_DEPLOYMENT_BUCKET)
+LAMBDA_FUNCTION_NAME ?= helloWorld
 
 help: ## Show this help message
 	@echo 'Usage: make <target>'
@@ -46,7 +47,7 @@ upload: package ## Upload package to S3
 		exit 1; \
 	fi
 	cd src/lambda && \
-	aws s3 cp $(LAMBDA_ZIP) s3://$(S3_BUCKET)/lambda-deployments/hello-world-lambda-latest.zip
+	aws s3 cp $(LAMBDA_ZIP) s3://$(S3_BUCKET)/lambda-deployments/$(LAMBDA_FUNCTION_NAME)-latest.zip
 
 deploy-dev: ## Deploy to dev environment
 	@if [ -z "$(S3_BUCKET)" ]; then \
@@ -55,8 +56,9 @@ deploy-dev: ## Deploy to dev environment
 	fi
 	cd terragrunt/dev/lambda && \
 	export TF_VAR_lambda_s3_bucket=$(S3_BUCKET) && \
-	export TF_VAR_lambda_s3_key="lambda-deployments/hello-world-lambda-latest.zip" && \
+	export TF_VAR_lambda_s3_key="lambda-deployments/$(LAMBDA_FUNCTION_NAME)-latest.zip" && \
 	export TF_VAR_environment="dev" && \
+	export TF_VAR_lambda_function_name="$(LAMBDA_FUNCTION_NAME)" && \
 	terragrunt apply -auto-approve
 
 deploy-staging: ## Deploy to staging environment
@@ -66,8 +68,9 @@ deploy-staging: ## Deploy to staging environment
 	fi
 	cd terragrunt/staging/lambda && \
 	export TF_VAR_lambda_s3_bucket=$(S3_BUCKET) && \
-	export TF_VAR_lambda_s3_key="lambda-deployments/hello-world-lambda-latest.zip" && \
+	export TF_VAR_lambda_s3_key="lambda-deployments/$(LAMBDA_FUNCTION_NAME)-latest.zip" && \
 	export TF_VAR_environment="staging" && \
+	export TF_VAR_lambda_function_name="$(LAMBDA_FUNCTION_NAME)" && \
 	terragrunt apply -auto-approve
 
 deploy-prod: ## Deploy to prod environment
@@ -77,8 +80,9 @@ deploy-prod: ## Deploy to prod environment
 	fi
 	cd terragrunt/prod/lambda && \
 	export TF_VAR_lambda_s3_bucket=$(S3_BUCKET) && \
-	export TF_VAR_lambda_s3_key="lambda-deployments/hello-world-lambda-latest.zip" && \
+	export TF_VAR_lambda_s3_key="lambda-deployments/$(LAMBDA_FUNCTION_NAME)-latest.zip" && \
 	export TF_VAR_environment="prod" && \
+	export TF_VAR_lambda_function_name="$(LAMBDA_FUNCTION_NAME)" && \
 	terragrunt apply -auto-approve
 
 destroy-dev: ## Destroy dev environment
@@ -92,7 +96,7 @@ destroy-prod: ## Destroy prod environment
 
 test-lambda: ## Test the deployed Lambda function
 	@ENV=$${ENV:-dev}; \
-	FUNCTION_NAME="hello-world-lambda-$$ENV"; \
+	FUNCTION_NAME=$(LAMBDA_FUNCTION_NAME); \
 	echo "Testing Lambda function: $$FUNCTION_NAME"; \
 	aws lambda invoke \
 		--function-name "$$FUNCTION_NAME" \

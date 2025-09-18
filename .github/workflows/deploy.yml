@@ -17,6 +17,16 @@ on:
         required: true
         default: 'main'
         type: string
+      lambda_function_name:
+        description: 'Lambda function name'
+        required: true
+        default: 'helloWorld'
+        type: choice
+        options:
+          - helloWorld
+          - truckService
+          - bInsService
+          - routesService
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -44,8 +54,9 @@ jobs:
       - name: Verify deployment package exists
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
+          FUNCTION_NAME=${{ github.event.inputs.lambda_function_name || 'helloWorld' }}
           echo "Checking for deployment package in S3..."
-          aws s3 ls s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-latest.zip || {
+          aws s3 ls s3://${{ env.S3_BUCKET }}/lambda-deployments/${FUNCTION_NAME}-latest.zip || {
             echo "::error::Deployment package not found. Please run the build-and-upload workflow first."
             exit 1
           }
@@ -53,15 +64,16 @@ jobs:
         working-directory: terragrunt/${{ github.event.inputs.environment || 'dev' }}/lambda
         run: |
           export TF_VAR_lambda_s3_bucket=${{ env.S3_BUCKET }}
-          export TF_VAR_lambda_s3_key="lambda-deployments/hello-world-lambda-latest.zip"
+          export TF_VAR_lambda_s3_key="lambda-deployments/${{ github.event.inputs.lambda_function_name || 'helloWorld' }}-latest.zip"
           export TF_VAR_environment="${{ github.event.inputs.environment || 'dev' }}"
+          export TF_VAR_lambda_function_name="${{ github.event.inputs.lambda_function_name || 'helloWorld' }}"
           terragrunt init
           terragrunt plan
           terragrunt apply -auto-approve
       - name: Get Lambda function URL
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
-          FUNCTION_NAME="hello-world-lambda-${ENVIRONMENT}"
+          FUNCTION_NAME=${{ github.event.inputs.lambda_function_name || 'helloWorld' }}
           # Get the function URL if it exists
           FUNCTION_URL=$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --query 'FunctionUrl' --output text 2>/dev/null || echo "")
           if [ -n "$FUNCTION_URL" ] && [ "$FUNCTION_URL" != "None" ]; then
@@ -73,7 +85,7 @@ jobs:
       - name: Test deployment
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
-          FUNCTION_NAME="hello-world-lambda-${ENVIRONMENT}"
+          FUNCTION_NAME=${{ github.event.inputs.lambda_function_name || 'helloWorld' }}
           echo "Testing Lambda function..."
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \

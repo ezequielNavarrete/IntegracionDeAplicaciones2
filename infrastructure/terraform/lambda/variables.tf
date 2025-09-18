@@ -1,3 +1,7 @@
+variable "lambda_function_name" {
+  description = "Nombre de la función Lambda a desplegar"
+  type        = string
+}
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
