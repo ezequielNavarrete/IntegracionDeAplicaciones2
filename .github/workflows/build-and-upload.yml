@@ -1,33 +1,29 @@
 name: Build and Upload to S3
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build from'
+        required: true
+        default: 'main'
+        type: string
 
 env:
   GO_VERSION: '1.21'
   S3_BUCKET: ${{ vars.S3_DEPLOYMENT_BUCKET || 'integracionbucket' }}
-    workflow_dispatch:
-      inputs:
-        branch:
-          description: 'Branch to build from'
-          required: true
-          default: 'main'
-          type: string
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
 
 jobs:
-        if: github.ref == format('refs/heads/{0}', github.event.inputs.branch)
   build-and-upload:
     runs-on: ubuntu-latest
-    
-          with:
-            ref: ${{ github.event.inputs.branch }}
+    if: github.ref == format('refs/heads/{0}', github.event.inputs.branch)
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      # ...existing code...
 
     - name: Set up Go
       uses: actions/setup-go@v4

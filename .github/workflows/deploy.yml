@@ -1,8 +1,6 @@
 name: Deploy Lambda
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       environment:
@@ -11,9 +9,14 @@ on:
         default: 'dev'
         type: choice
         options:
-        - dev
-        - staging
-        - prod
+          - dev
+          - staging
+          - prod
+      branch:
+        description: 'Branch to deploy from'
+        required: true
+        default: 'main'
+        type: string
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -23,24 +26,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'dev' }}
-    
+    if: github.ref == format('refs/heads/{0}', github.event.inputs.branch)
     steps:
-              branch:
-                description: 'Branch to deploy from'
-                required: true
-                default: 'main'
-                type: string
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-            if: github.ref == format('refs/heads/{0}', github.event.inputs.branch)
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token:        ${{ secrets.AWS_SESSION_TOKEN }} 
-        aws-region: ${{ env.AWS_REGION }}
-              with:
-                ref: ${{ github.event.inputs.branch }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      # ...existing code...
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
