@@ -74,9 +74,9 @@ jobs:
           export TF_VAR_lambda_s3_key="lambda-deployments/${{ github.event.inputs.lambda_function_name || 'helloWorld' }}-latest.zip"
           export TF_VAR_environment="${{ github.event.inputs.environment || 'dev' }}"
           export TF_VAR_lambda_function_name="${{ github.event.inputs.lambda_function_name || 'helloWorld' }}"
-          terragrunt init
-          terragrunt plan
-          terragrunt apply -auto-approve
+          terragrunt init --terragrunt-non-interactive
+          terragrunt plan --terragrunt-non-interactive
+          terragrunt apply -auto-approve --terragrunt-non-interactive
       - name: Get Lambda function URL
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
