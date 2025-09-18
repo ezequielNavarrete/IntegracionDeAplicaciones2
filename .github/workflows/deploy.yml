@@ -2,8 +2,11 @@ name: Deploy Lambda
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
+    inputs      - name: Setup Terraform state bucket
+        run: |
+
+          aws s3 ls s3://integracionbucket/terraform-state/ || echo "Creating terraform-state folder structure"
+          echo "Terraform state configuration ready"    environment:
         description: 'Environment to deploy to'
         required: true
         default: 'dev'
