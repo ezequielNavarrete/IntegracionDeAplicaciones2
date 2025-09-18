@@ -94,10 +94,15 @@ jobs:
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
           FUNCTION_NAME=${{ github.event.inputs.lambda_function_name || 'helloWorld' }}
           echo "Testing Lambda function..."
+          
+          # Create a simple test payload
+          echo '{"test": "payload"}' > test-payload.json
+          
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
-            --payload '{"httpMethod": "GET", "path": "/", "requestContext": {"requestId": "test-request", "requestTime": "2024-01-01T00:00:00Z"}}' \
+            --payload file://test-payload.json \
             response.json
+          
           echo "Lambda response:"
           cat response.json
           echo ""
