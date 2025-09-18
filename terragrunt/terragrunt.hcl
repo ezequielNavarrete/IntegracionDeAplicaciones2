@@ -22,11 +22,10 @@ remote_state {
     if_exists = "overwrite_terragrunt"
   }
   config = {
-    bucket = "your-terraform-state-bucket-${local.environment}"
+    bucket = "integracion-terraform-state"
     key    = "${local.environment}/${local.service}/terraform.tfstate"
     region = "us-east-1"
     
-    dynamodb_table = "terraform-locks"
     encrypt        = true
   }
 }

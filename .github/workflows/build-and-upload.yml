@@ -8,6 +8,16 @@ on:
         required: true
         default: 'main'
         type: string
+      lambda_function_name:
+        description: 'Lambda function name'
+        required: true
+        default: 'helloWorld'
+        type: choice
+        options:
+          - helloWorld
+          - truckService
+          - bInsService
+          - routesService
 env:
   GO_VERSION: '1.21'
   S3_BUCKET: ${{ vars.S3_DEPLOYMENT_BUCKET || 'integracionbucket' }}
@@ -56,10 +66,11 @@ jobs:
       - name: Upload to S3
         run: |
           cd src/lambda
-          aws s3 cp lambda-deployment.zip s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-${{ github.sha }}.zip
+          # Upload with commit SHA for versioning
+          aws s3 cp lambda-deployment.zip s3://${{ env.S3_BUCKET }}/lambda-deployments/${{ github.event.inputs.lambda_function_name }}-${{ github.sha }}.zip
           
           # Also upload as latest for easy reference
-          aws s3 cp lambda-deployment.zip s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-latest.zip
+          aws s3 cp lambda-deployment.zip s3://${{ env.S3_BUCKET }}/lambda-deployments/${{ github.event.inputs.lambda_function_name }}-latest.zip
 
       - name: Create deployment manifest
         run: |
@@ -68,18 +79,20 @@ jobs:
             "commit_sha": "${{ github.sha }}",
             "branch": "${{ github.ref_name }}",
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "s3_key": "lambda-deployments/hello-world-lambda-${{ github.sha }}.zip",
+            "lambda_function_name": "${{ github.event.inputs.lambda_function_name }}",
+            "s3_key": "lambda-deployments/${{ github.event.inputs.lambda_function_name }}-${{ github.sha }}.zip",
             "s3_bucket": "${{ env.S3_BUCKET }}"
           }
           EOF
 
       - name: Upload deployment manifest
         run: |
-          aws s3 cp deployment-manifest.json s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-${{ github.sha }}-manifest.json
-          aws s3 cp deployment-manifest.json s3://${{ env.S3_BUCKET }}/lambda-deployments/hello-world-lambda-latest-manifest.json
+          aws s3 cp deployment-manifest.json s3://${{ env.S3_BUCKET }}/lambda-deployments/${{ github.event.inputs.lambda_function_name }}-${{ github.sha }}-manifest.json
+          aws s3 cp deployment-manifest.json s3://${{ env.S3_BUCKET }}/lambda-deployments/${{ github.event.inputs.lambda_function_name }}-latest-manifest.json
 
       - name: Output deployment info
         run: |
           echo "::notice::Lambda deployment package uploaded to S3"
-          echo "::notice::S3 Key: lambda-deployments/hello-world-lambda-${{ github.sha }}.zip"
+          echo "::notice::Function Name: ${{ github.event.inputs.lambda_function_name }}"
+          echo "::notice::S3 Key: lambda-deployments/${{ github.event.inputs.lambda_function_name }}-${{ github.sha }}.zip"
           echo "::notice::S3 Bucket: ${{ env.S3_BUCKET }}"

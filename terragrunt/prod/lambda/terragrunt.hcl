@@ -8,6 +8,7 @@ terraform {
 
 inputs = {
   environment = "prod"
+  lambda_function_name = "helloWorld"
   aws_region  = "us-east-1"
   
   # These will be provided by environment variables in CI/CD

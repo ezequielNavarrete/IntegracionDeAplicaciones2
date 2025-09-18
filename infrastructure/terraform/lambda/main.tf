@@ -1,6 +1,6 @@
 # IAM role for Lambda function
 resource "aws_iam_role" "lambda_role" {
-  name = "hello-world-lambda-role-${var.environment}"
+  name = "${var.lambda_function_name}-role-${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -16,7 +16,7 @@ resource "aws_iam_role" "lambda_role" {
   })
 
   tags = merge(var.tags, {
-    Name        = "hello-world-lambda-role-${var.environment}"
+    Name        = "${var.lambda_function_name}-role-${var.environment}"
     Environment = var.environment
   })
 }
@@ -29,7 +29,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 
 # Policy for S3 access (for SDK example)
 resource "aws_iam_policy" "lambda_s3_policy" {
-  name        = "hello-world-lambda-s3-policy-${var.environment}"
+  name        = "${var.lambda_function_name}-s3-policy-${var.environment}"
   description = "Policy for Lambda to access S3"
 
   policy = jsonencode({
@@ -47,7 +47,7 @@ resource "aws_iam_policy" "lambda_s3_policy" {
   })
 
   tags = merge(var.tags, {
-    Name        = "hello-world-lambda-s3-policy-${var.environment}"
+    Name        = "${var.lambda_function_name}-s3-policy-${var.environment}"
     Environment = var.environment
   })
 }
@@ -57,9 +57,9 @@ resource "aws_iam_role_policy_attachment" "lambda_s3_policy_attachment" {
   policy_arn = aws_iam_policy.lambda_s3_policy.arn
 }
 
-# Lambda function
-resource "aws_lambda_function" "hello_world" {
-  function_name = "hello-world-lambda-${var.environment}"
+
+resource "aws_lambda_function" "lambda" {
+  function_name = var.lambda_function_name
   role          = aws_iam_role.lambda_role.arn
   handler       = "bootstrap"
   runtime       = "provided.al2023"
@@ -76,14 +76,14 @@ resource "aws_lambda_function" "hello_world" {
   }
 
   tags = merge(var.tags, {
-    Name        = "hello-world-lambda-${var.environment}"
+    Name        = "${var.lambda_function_name}"
     Environment = var.environment
   })
 }
 
 # Lambda function URL (for easy HTTP access)
-resource "aws_lambda_function_url" "hello_world_url" {
-  function_name      = aws_lambda_function.hello_world.function_name
+resource "aws_lambda_function_url" "lambda_url" {
+  function_name      = aws_lambda_function.lambda.function_name
   authorization_type = "NONE"
 
   cors {
@@ -98,11 +98,11 @@ resource "aws_lambda_function_url" "hello_world_url" {
 
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "lambda_logs" {
-  name              = "/aws/lambda/hello-world-lambda-${var.environment}"
+  name              = "/aws/lambda/${var.lambda_function_name}"
   retention_in_days = 14
 
   tags = merge(var.tags, {
-    Name        = "hello-world-lambda-logs-${var.environment}"
+    Name        = "${var.lambda_function_name}-logs"
     Environment = var.environment
   })
 }
