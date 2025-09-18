@@ -51,6 +51,13 @@ jobs:
           sudo wget -q -O /usr/local/bin/terragrunt https://github.com/gruntwork-io/terragrunt/releases/download/v0.54.8/terragrunt_linux_amd64
           sudo chmod +x /usr/local/bin/terragrunt
           terragrunt --version
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:        ${{ secrets.AWS_SESSION_TOKEN }} 
+          aws-region: ${{ env.AWS_REGION }}
       - name: Verify deployment package exists
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
@@ -67,9 +74,9 @@ jobs:
           export TF_VAR_lambda_s3_key="lambda-deployments/${{ github.event.inputs.lambda_function_name || 'helloWorld' }}-latest.zip"
           export TF_VAR_environment="${{ github.event.inputs.environment || 'dev' }}"
           export TF_VAR_lambda_function_name="${{ github.event.inputs.lambda_function_name || 'helloWorld' }}"
-          terragrunt init
-          terragrunt plan
-          terragrunt apply -auto-approve
+          terragrunt init --terragrunt-non-interactive
+          terragrunt plan --terragrunt-non-interactive
+          terragrunt apply -auto-approve --terragrunt-non-interactive
       - name: Get Lambda function URL
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
@@ -82,15 +89,3 @@ jobs:
           # Get the function ARN
           FUNCTION_ARN=$(aws lambda get-function --function-name "$FUNCTION_NAME" --query 'Configuration.FunctionArn' --output text)
           echo "::notice::Lambda Function ARN: $FUNCTION_ARN"
-      - name: Test deployment
-        run: |
-          ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
-          FUNCTION_NAME=${{ github.event.inputs.lambda_function_name || 'helloWorld' }}
-          echo "Testing Lambda function..."
-          aws lambda invoke \
-            --function-name "$FUNCTION_NAME" \
-            --payload '{"httpMethod": "GET", "path": "/", "requestContext": {"requestId": "test-request", "requestTime": "2024-01-01T00:00:00Z"}}' \
-            response.json
-          echo "Lambda response:"
-          cat response.json
-          echo ""

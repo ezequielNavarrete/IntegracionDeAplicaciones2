@@ -1,4 +1,21 @@
 # Terragrunt configuration for common settings
+
+# Configure remote state
+remote_state {
+  backend = "s3"
+  generate = {
+    path      = "backend.tf"
+    if_exists = "overwrite_terragrunt"
+  }
+  config = {
+    bucket  = "integracionbucket"
+    key     = "terraform-state/${local.environment}/${local.service}/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
+  }
+}
+
+# Terragrunt configuration for common settings
 locals {
   # Parse the file path to get environment info
   path_parts   = split("/", path_relative_to_include())
@@ -11,22 +28,6 @@ locals {
     Environment = local.environment
     Service     = local.service
     ManagedBy   = "Terragrunt"
-  }
-}
-
-# Configure remote state
-remote_state {
-  backend = "s3"
-  generate = {
-    path      = "backend.tf"
-    if_exists = "overwrite_terragrunt"
-  }
-  config = {
-    bucket = "integracion-terraform-state"
-    key    = "${local.environment}/${local.service}/terraform.tfstate"
-    region = "us-east-1"
-    
-    encrypt        = true
   }
 }
 
