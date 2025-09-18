@@ -58,6 +58,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token:        ${{ secrets.AWS_SESSION_TOKEN }} 
           aws-region: ${{ env.AWS_REGION }}
+      - name: Setup Terraform state bucket
+        run: |
+          # Ensure the terraform state bucket exists
+          aws s3 ls s3://integracion-terraform-state || aws s3 mb s3://integracion-terraform-state
+          echo "Terraform state bucket ready"
       - name: Verify deployment package exists
         run: |
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
