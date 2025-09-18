@@ -11,7 +11,9 @@ remote_state {
     region = "us-east-1"
     encrypt = true
   }
-}common settings
+}
+
+# Terragrunt configuration for common settings
 locals {
   # Parse the file path to get environment info
   path_parts   = split("/", path_relative_to_include())
