@@ -22,7 +22,7 @@ remote_state {
     if_exists = "overwrite_terragrunt"
   }
   config = {
-    bucket = "integracionTerraformState"
+    bucket = "integracion-terraform-state"
     key    = "${local.environment}/${local.service}/terraform.tfstate"
     region = "us-east-1"
     
