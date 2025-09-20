@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Compilar binario estático para la aplicación web
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./src/lambda/demo
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./src/lambda/binService
 
 # Final stage
 FROM alpine:3.20
