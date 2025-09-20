@@ -1,0 +1,35 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # App Configuration
+      APP_PORT: ${APP_PORT:-8080}
+      APP_ENV: ${APP_ENV:-dev}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      
+      # MySQL Configuration
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-tachos}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      
+      # Neo4j Configuration
+      NEO4J_URI: ${NEO4J_URI}
+      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
+      
+      # JWT Configuration
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_TTL_MIN: ${JWT_ACCESS_TTL_MIN:-15}
+      JWT_REFRESH_TTL_H: ${JWT_REFRESH_TTL_H:-168}
+      RATE_LIMIT_RPS: 10
