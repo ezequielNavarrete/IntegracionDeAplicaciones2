@@ -1,4 +1,6 @@
-package main
+package lambda_test
+
+/*package main
 
 import (
 	"context"
@@ -86,3 +88,4 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 func main() {
 	lambda.Start(handler)
 }
+*/
