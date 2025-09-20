@@ -8,5 +8,5 @@ import (
 func SetupRoutes(r *gin.Engine) {
 	r.GET("/ruta-optima/:zonaID", handlers.GetRutaHandler)
 
-	r.GET("/enviar-emergencia", handlers.SendEmergencyHandler)
+	r.POST("/enviar-emergencia", handlers.SendEmergencyHandler)
 }
