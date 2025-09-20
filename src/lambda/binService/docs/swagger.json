@@ -1,0 +1,154 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "API para gestión de rutas y emergencias",
+        "title": "IntegracionDeAplicaciones2 API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/enviar-emergencia": {
+            "post": {
+                "description": "Registra una nueva emergencia en el sistema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Emergencias"
+                ],
+                "summary": "Enviar emergencia",
+                "parameters": [
+                    {
+                        "description": "Datos de la emergencia",
+                        "name": "emergencia",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RequestBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Emergencia enviada correctamente",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ResponseBody"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ruta-optima/{zonaID}": {
+            "get": {
+                "description": "Devuelve la ruta óptima y distancias para una zona específica",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas"
+                ],
+                "summary": "Obtener ruta óptima",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la zona",
+                        "name": "zonaID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de puntos con distancias",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "zonaID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.RequestBody": {
+            "type": "object",
+            "properties": {
+                "descripcion": {
+                    "type": "string",
+                    "example": "Incendio en edificio de oficinas"
+                },
+                "tipo": {
+                    "type": "string",
+                    "example": "incendio"
+                }
+            }
+        },
+        "handlers.ResponseBody": {
+            "type": "object",
+            "properties": {
+                "descripcion": {
+                    "type": "string",
+                    "example": "Incendio en edificio de oficinas"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Emergencia enviada correctamente"
+                },
+                "tipo": {
+                    "type": "string",
+                    "example": "incendio"
+                }
+            }
+        }
+    }
+}

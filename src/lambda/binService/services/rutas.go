@@ -7,7 +7,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/demo/config"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 

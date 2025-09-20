@@ -44,7 +44,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (Respon
 
 	// Example of using AWS SDK v2 - create S3 client
 	s3Client := s3.NewFromConfig(cfg)
-	
+
 	// List buckets as an example of SDK usage
 	bucketsResult, err := s3Client.ListBuckets(ctx, &s3.ListBucketsInput{})
 	var bucketCount int
