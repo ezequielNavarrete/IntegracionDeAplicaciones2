@@ -12,27 +12,63 @@ package main
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost:8080
 // @BasePath /
-// @schemes http
 
 import (
+	"log"
+	"os"
+
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	_ "github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/docs" // Import generated docs
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/routes"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func main() {
 	// Connect to MySQL
 	config.ConnectDatabase()
 
+	// Connect to Redis and initialize data
+	config.ConnectRedis()
+
+	// Initialize Neo4j driver pool
+	_, err := config.GetNeo4jDriver()
+	if err != nil {
+		log.Printf("Warning: Neo4j connection failed: %v", err)
+	}
+
+	// Close Neo4j driver on app shutdown
+	defer config.CloseNeo4jDriver()
+
 	// start Gin server
 	r := gin.Default()
 
-	// record the routes
+	// Setup routes (API endpoints only)
 	routes.SetupRoutes(r)
 
-	// Run server on port 8080
-	r.Run(":8080")
+	// Configure Swagger dynamically
+	swaggerHost := os.Getenv("SWAGGER_HOST")
+	if swaggerHost == "" {
+		swaggerHost = "localhost:8080"
+	}
+
+	swaggerScheme := os.Getenv("SWAGGER_SCHEME")
+	if swaggerScheme == "" {
+		swaggerScheme = "http"
+	}
+
+	// Swagger endpoint with dynamic config
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
+		ginSwagger.URL(swaggerScheme+"://"+swaggerHost+"/swagger/doc.json"),
+	))
+
+	// Get port from environment
+	port := os.Getenv("APP_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	r.Run(":" + port)
 }
