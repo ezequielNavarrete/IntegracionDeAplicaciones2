@@ -67,6 +67,198 @@ const docTemplate = `{
                 }
             }
         },
+        "/personas": {
+            "get": {
+                "description": "Devuelve la lista completa de personas con sus asignaciones",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Obtener todas las personas",
+                "responses": {
+                    "200": {
+                        "description": "Lista de personas",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handlers.PersonaResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/personas/zona/{zona}": {
+            "get": {
+                "description": "Devuelve todas las personas asignadas a una zona específica",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Obtener personas por zona",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Número de zona",
+                        "name": "zona",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Personas de la zona",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handlers.PersonaResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/personas/{id}": {
+            "get": {
+                "description": "Devuelve los datos de una persona específica",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Obtener persona por ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la persona",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Datos de la persona",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PersonaResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Persona no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ruta-optima": {
+            "get": {
+                "description": "Devuelve la ruta óptima y distancias para la zona de la persona asociada al email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas"
+                ],
+                "summary": "Obtener ruta óptima por email",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "email del usuario",
+                        "name": "email",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de puntos con distancias",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Email faltante o inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario o persona no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/ruta-optima/{zonaID}": {
             "get": {
                 "description": "Devuelve la ruta óptima y distancias para una zona específica",
@@ -120,9 +312,137 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/tachos": {
+            "post": {
+                "description": "Crea un tacho guardándolo tanto en MySQL como en Neo4j",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tachos"
+                ],
+                "summary": "Crear un nuevo tacho",
+                "parameters": [
+                    {
+                        "description": "Datos del tacho a crear",
+                        "name": "tacho",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateTachoRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Tacho creado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateTachoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos de entrada inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tachos/{custom_id}": {
+            "delete": {
+                "description": "Elimina un tacho tanto de MySQL como de Neo4j usando el ID personalizado (direccion|barrio)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tachos"
+                ],
+                "summary": "Eliminar un tacho",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID personalizado del tacho (direccion|barrio)",
+                        "name": "custom_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tacho eliminado exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ID personalizado requerido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tacho no encontrado en ninguna base",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "handlers.PersonaResponse": {
+            "type": "object",
+            "properties": {
+                "camion_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "zona_id": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.RequestBody": {
             "type": "object",
             "properties": {
@@ -152,6 +472,51 @@ const docTemplate = `{
                     "example": "incendio"
                 }
             }
+        },
+        "services.CreateTachoRequest": {
+            "type": "object",
+            "properties": {
+                "barrio": {
+                    "description": "Datos para Neo4j",
+                    "type": "string"
+                },
+                "capacidad": {
+                    "type": "number"
+                },
+                "direccion": {
+                    "type": "string"
+                },
+                "id_estado": {
+                    "type": "integer"
+                },
+                "id_tipo": {
+                    "description": "Datos para MySQL",
+                    "type": "integer"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "prioridad": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.CreateTachoResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "neo_node_id": {
+                    "type": "string"
+                },
+                "tacho_id": {
+                    "type": "integer"
+                }
+            }
         }
     }
 }`
@@ -159,9 +524,9 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/",
-	Schemes:          []string{"http"},
+	Schemes:          []string{},
 	Title:            "IntegracionDeAplicaciones2 API",
 	Description:      "API para gestión de rutas y emergencias",
 	InfoInstanceName: "swagger",

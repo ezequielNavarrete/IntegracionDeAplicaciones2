@@ -25,6 +25,13 @@ func ConnectDatabase() {
 	port := os.Getenv("MYSQL_PORT")
 	dbname := os.Getenv("MYSQL_DATABASE")
 
+	// Debug: mostrar variables cargadas (sin password)
+	log.Printf("🔧 MySQL Config: user=%s, host=%s, port=%s, db=%s", user, host, port, dbname)
+
+	if user == "" || host == "" || dbname == "" {
+		log.Fatal("❌ Variables de MySQL no configuradas correctamente")
+	}
+
 	// build DSN
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=skip-verify",
 		user, pass, host, port, dbname)

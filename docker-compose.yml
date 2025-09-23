@@ -8,6 +8,8 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    depends_on:
+      - redis
     environment:
       # App Configuration
       APP_PORT: ${APP_PORT:-8080}
@@ -33,3 +35,25 @@ services:
       JWT_ACCESS_TTL_MIN: ${JWT_ACCESS_TTL_MIN:-15}
       JWT_REFRESH_TTL_H: ${JWT_REFRESH_TTL_H:-168}
       RATE_LIMIT_RPS: 10
+      
+      # Redis Configuration
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      
+      # Server Configuration
+      PORT: ${PORT:-8080}
+      
+      # Swagger Configuration
+      SWAGGER_HOST: ${SWAGGER_HOST:-localhost:8080}
+      SWAGGER_SCHEME: ${SWAGGER_SCHEME:-http}
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
