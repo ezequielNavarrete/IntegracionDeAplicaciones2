@@ -363,11 +363,9 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/tachos/{custom_id}": {
+            },
             "delete": {
-                "description": "Elimina un tacho tanto de MySQL como de Neo4j usando el ID personalizado (direccion|barrio)",
+                "description": "Elimina un tacho tanto de MySQL como de Neo4j usando query parameters (custom_id O direccion+barrio)",
                 "consumes": [
                     "application/json"
                 ],
@@ -383,8 +381,19 @@ const docTemplate = `{
                         "type": "string",
                         "description": "ID personalizado del tacho (direccion|barrio)",
                         "name": "custom_id",
-                        "in": "path",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Dirección del tacho (requiere también barrio)",
+                        "name": "direccion",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Barrio del tacho (requerido si se pasa direccion)",
+                        "name": "barrio",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -398,7 +407,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "ID personalizado requerido",
+                        "description": "Parámetros inválidos",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {

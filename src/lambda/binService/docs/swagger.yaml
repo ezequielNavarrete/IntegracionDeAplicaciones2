@@ -266,6 +266,54 @@ paths:
       tags:
       - Rutas
   /tachos:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina un tacho tanto de MySQL como de Neo4j usando query parameters
+        (custom_id O direccion+barrio)
+      parameters:
+      - description: ID personalizado del tacho (direccion|barrio)
+        in: query
+        name: custom_id
+        type: string
+      - description: Dirección del tacho (requiere también barrio)
+        in: query
+        name: direccion
+        type: string
+      - description: Barrio del tacho (requerido si se pasa direccion)
+        in: query
+        name: barrio
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tacho eliminado exitosamente
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Parámetros inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Tacho no encontrado en ninguna base
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar un tacho
+      tags:
+      - Tachos
     post:
       consumes:
       - application/json
@@ -297,48 +345,6 @@ paths:
               type: string
             type: object
       summary: Crear un nuevo tacho
-      tags:
-      - Tachos
-  /tachos/{custom_id}:
-    delete:
-      consumes:
-      - application/json
-      description: Elimina un tacho tanto de MySQL como de Neo4j usando el ID personalizado
-        (direccion|barrio)
-      parameters:
-      - description: ID personalizado del tacho (direccion|barrio)
-        in: path
-        name: custom_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Tacho eliminado exitosamente
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: ID personalizado requerido
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Tacho no encontrado en ninguna base
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Error interno del servidor
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Eliminar un tacho
       tags:
       - Tachos
 swagger: "2.0"
