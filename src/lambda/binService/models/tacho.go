@@ -8,7 +8,7 @@ type Tacho struct {
 	Capacidad float64 `gorm:"column:capacidad"`
 }
 
-// TableName indica el nombre exacto de la tabla en MySQL
+// TableName - nombre exacto de la tabla en MySQL
 func (Tacho) TableName() string {
 	return "Tacho"
 }
