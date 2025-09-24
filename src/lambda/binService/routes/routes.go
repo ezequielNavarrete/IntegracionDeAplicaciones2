@@ -19,4 +19,5 @@ func SetupRoutes(r *gin.Engine) {
 	// Endpoints para tachos
 	r.POST("/tachos", handlers.CreateTachoHandler)
 	r.DELETE("/tachos", handlers.DeleteTachoHandler) // Cambiado para usar query parameters
+	r.PUT("/tachos/:id_tacho/capacidad", handlers.UpdateCapacidadTachoHandler)
 }
