@@ -24,6 +24,18 @@ type UpdatePrioridadResponse struct {
 	Prioridad int    `json:"prioridad"`
 }
 
+// UpdatePrioridadTachoHandler actualiza la prioridad de un tacho
+// @Summary Actualizar prioridad del tacho
+// @Description Actualiza el campo prioridad de un tacho en Neo4j
+// @Tags Tachos
+// @Accept json
+// @Produce json
+// @Param id_tacho path int true "ID del tacho"
+// @Param prioridad body UpdatePrioridadRequest true "Nueva prioridad del tacho"
+// @Success 200 {object} UpdatePrioridadResponse "Prioridad actualizada correctamente"
+// @Failure 400 {object} map[string]string "Datos inválidos"
+// @Failure 500 {object} map[string]string "Error interno"
+// @Router /tachos/{id_tacho}/prioridad [put]
 func UpdatePrioridadTachoHandler(c *gin.Context) {
 	// ID en URL
 	idStr := c.Param("id_tacho")

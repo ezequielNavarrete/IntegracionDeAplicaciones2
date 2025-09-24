@@ -429,6 +429,65 @@
                 }
             }
         },
+        "/tachos/{id_tacho}/prioridad": {
+            "put": {
+                "description": "Actualiza el campo prioridad de un tacho en Neo4j",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tachos"
+                ],
+                "summary": "Actualizar prioridad del tacho",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del tacho",
+                        "name": "id_tacho",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Nueva prioridad del tacho",
+                        "name": "prioridad",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdatePrioridadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prioridad actualizada correctamente",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdatePrioridadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tachos/{id}/capacidad": {
             "put": {
                 "description": "Actualiza el campo capacidad de un tacho en MySQL",
@@ -557,6 +616,32 @@
                 "message": {
                     "type": "string",
                     "example": "Capacidad actualizada correctamente"
+                }
+            }
+        },
+        "handlers.UpdatePrioridadRequest": {
+            "type": "object",
+            "properties": {
+                "prioridad": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "handlers.UpdatePrioridadResponse": {
+            "type": "object",
+            "properties": {
+                "id_neo": {
+                    "type": "string"
+                },
+                "id_tacho": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "prioridad": {
+                    "type": "integer"
                 }
             }
         },
