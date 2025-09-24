@@ -428,6 +428,65 @@
                     }
                 }
             }
+        },
+        "/tachos/{id}/capacidad": {
+            "put": {
+                "description": "Actualiza el campo capacidad de un tacho en MySQL",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tachos"
+                ],
+                "summary": "Actualizar capacidad del tacho",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del tacho",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Nueva capacidad del tacho",
+                        "name": "capacidad",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateCapacidadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Capacidad actualizada correctamente",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateCapacidadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -472,6 +531,32 @@
                 "tipo": {
                     "type": "string",
                     "example": "incendio"
+                }
+            }
+        },
+        "handlers.UpdateCapacidadRequest": {
+            "type": "object",
+            "properties": {
+                "capacidad": {
+                    "type": "number",
+                    "example": 90
+                }
+            }
+        },
+        "handlers.UpdateCapacidadResponse": {
+            "type": "object",
+            "properties": {
+                "capacidad": {
+                    "type": "number",
+                    "example": 90
+                },
+                "id_tacho": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Capacidad actualizada correctamente"
                 }
             }
         },

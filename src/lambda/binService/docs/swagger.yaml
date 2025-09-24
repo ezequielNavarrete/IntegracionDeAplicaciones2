@@ -30,6 +30,24 @@ definitions:
         example: incendio
         type: string
     type: object
+  handlers.UpdateCapacidadRequest:
+    properties:
+      capacidad:
+        example: 90
+        type: number
+    type: object
+  handlers.UpdateCapacidadResponse:
+    properties:
+      capacidad:
+        example: 90
+        type: number
+      id_tacho:
+        example: 1
+        type: integer
+      message:
+        example: Capacidad actualizada correctamente
+        type: string
+    type: object
   services.CreateTachoRequest:
     properties:
       barrio:
@@ -345,6 +363,45 @@ paths:
               type: string
             type: object
       summary: Crear un nuevo tacho
+      tags:
+      - Tachos
+  /tachos/{id}/capacidad:
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el campo capacidad de un tacho en MySQL
+      parameters:
+      - description: ID del tacho
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Nueva capacidad del tacho
+        in: body
+        name: capacidad
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateCapacidadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Capacidad actualizada correctamente
+          schema:
+            $ref: '#/definitions/handlers.UpdateCapacidadResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Actualizar capacidad del tacho
       tags:
       - Tachos
 swagger: "2.0"
