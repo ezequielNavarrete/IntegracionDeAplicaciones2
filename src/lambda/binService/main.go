@@ -17,6 +17,9 @@ package main
 import (
 	"log"
 	"os"
+	"time"
+
+	"github.com/gin-contrib/cors"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	_ "github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/docs" // Import generated docs
@@ -44,6 +47,16 @@ func main() {
 
 	// start Gin server
 	r := gin.Default()
+
+	// Configuración de CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // tu frontend
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Setup routes (API endpoints only)
 	routes.SetupRoutes(r)
