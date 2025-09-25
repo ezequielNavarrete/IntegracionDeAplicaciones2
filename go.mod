@@ -3,6 +3,7 @@ module github.com/ezequielNavarrete/IntegracionDeAplicaciones2
 go 1.24.0
 
 require (
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/joho/godotenv v1.5.1
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.3
