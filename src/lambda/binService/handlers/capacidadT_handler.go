@@ -47,6 +47,12 @@ func UpdateCapacidadTachoHandler(c *gin.Context) {
 		return
 	}
 
+	// >>> Validación de capacidad entre 0 y 100 <<<
+	if body.Capacidad < 0 || body.Capacidad > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Capacidad fuera de rango"})
+		return
+	}
+
 	if err := config.DB.Model(&models.Tacho{}).Where("id_tacho = ?", id).Update("capacidad", body.Capacidad).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar capacidad"})
 		return
