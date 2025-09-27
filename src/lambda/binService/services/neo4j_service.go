@@ -214,3 +214,58 @@ type TachoNeo4j struct {
 	Longitude float64 `json:"longitude"`
 	Prioridad int     `json:"prioridad"`
 }
+
+// GetAllTachosCoordinates obtiene las coordenadas de todos los tachos desde Neo4j
+func GetAllTachosCoordinates() (map[string]TachoNeo4j, error) {
+	session, err := getSession()
+	if err != nil {
+		return nil, err
+	}
+	defer session.Close(context.Background())
+
+	query := `
+		MATCH (t:Tacho)
+		RETURN t.id as id, t.barrio as barrio, t.direccion as direccion,
+			   t.location.latitude as latitude, t.location.longitude as longitude,
+			   t.prioridad as prioridad
+	`
+
+	result, err := session.ExecuteRead(context.Background(), func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		ctx := context.Background()
+		records, err := tx.Run(ctx, query, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		coordsMap := make(map[string]TachoNeo4j)
+		for records.Next(ctx) {
+			record := records.Record()
+			
+			id, _ := record.Get("id")
+			barrio, _ := record.Get("barrio")
+			direccion, _ := record.Get("direccion")
+			latitude, _ := record.Get("latitude")
+			longitude, _ := record.Get("longitude")
+			prioridad, _ := record.Get("prioridad")
+
+			tachoNeo := TachoNeo4j{
+				ID:        id.(string),
+				Barrio:    barrio.(string),
+				Direccion: direccion.(string),
+				Latitude:  latitude.(float64),
+				Longitude: longitude.(float64),
+				Prioridad: int(prioridad.(int64)),
+			}
+
+			coordsMap[id.(string)] = tachoNeo
+		}
+
+		return coordsMap, records.Err()
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error getting coordinates from Neo4j: %v", err)
+	}
+
+	return result.(map[string]TachoNeo4j), nil
+}

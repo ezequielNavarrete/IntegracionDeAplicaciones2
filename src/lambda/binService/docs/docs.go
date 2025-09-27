@@ -314,6 +314,39 @@ const docTemplate = `{
             }
         },
         "/tachos": {
+            "get": {
+                "description": "Devuelve todos los tachos con barrio, dirección, latitud, longitud, estado y capacidad",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tachos"
+                ],
+                "summary": "Obtener todos los tachos",
+                "responses": {
+                    "200": {
+                        "description": "Lista de todos los tachos",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/services.TachoCompleto"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Crea un tacho guardándolo tanto en MySQL como en Neo4j",
                 "consumes": [
@@ -694,6 +727,32 @@ const docTemplate = `{
                 },
                 "tacho_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "services.TachoCompleto": {
+            "type": "object",
+            "properties": {
+                "barrio": {
+                    "type": "string"
+                },
+                "capacidad": {
+                    "type": "number"
+                },
+                "direccion": {
+                    "type": "string"
+                },
+                "estado": {
+                    "type": "string"
+                },
+                "id_tacho": {
+                    "type": "integer"
+                },
+                "latitud": {
+                    "type": "number"
+                },
+                "longitud": {
+                    "type": "number"
                 }
             }
         }

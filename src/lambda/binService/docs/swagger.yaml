@@ -95,6 +95,23 @@ definitions:
       tacho_id:
         type: integer
     type: object
+  services.TachoCompleto:
+    properties:
+      barrio:
+        type: string
+      capacidad:
+        type: number
+      direccion:
+        type: string
+      estado:
+        type: string
+      id_tacho:
+        type: integer
+      latitud:
+        type: number
+      longitud:
+        type: number
+    type: object
 info:
   contact:
     email: support@swagger.io
@@ -347,6 +364,29 @@ paths:
               type: string
             type: object
       summary: Eliminar un tacho
+      tags:
+      - Tachos
+    get:
+      consumes:
+      - application/json
+      description: Devuelve todos los tachos con barrio, dirección, latitud, longitud,
+        estado y capacidad
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de todos los tachos
+          schema:
+            items:
+              $ref: '#/definitions/services.TachoCompleto'
+            type: array
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener todos los tachos
       tags:
       - Tachos
     post:
