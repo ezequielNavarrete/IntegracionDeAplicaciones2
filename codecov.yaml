@@ -14,9 +14,18 @@ coverage:
         threshold: 0%
         informational: false
 
+# Ignorar archivos que no necesitan coverage
 ignore:
   - "**/*_mock.go"
   - "**/vendor/**"
   - "**/*.pb.go"
   - "**/generated/**"
   - "**/bin/**"
+  - "**/main.go"          # archivos main suelen ser difíciles de testear
+  - "**/cmd/**"           # comandos CLI
+  
+# Configuración para comentarios en PRs
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
