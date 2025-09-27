@@ -26,6 +26,6 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./src/lambda/binService/coverage.out
+          files: ./src/lambda/binService/coverage.out
           flags: unittests
           name: codecov-umbrella
