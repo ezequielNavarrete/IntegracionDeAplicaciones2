@@ -16,11 +16,32 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Debug - List test files
+        working-directory: ./src/lambda/binService
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Go files found:"
+          find . -name "*.go" | head -10
+          echo "Test files found:"
+          find . -name "*_test.go"
+          echo "Go mod info:"
+          go mod download
+          
       - name: Run tests with coverage
         working-directory: ./src/lambda/binService
         run: |
-          go test ./... -covermode=atomic -coverpkg=./... -coverprofile=coverage.out
+          go mod tidy
+          go test -v ./... -covermode=atomic -coverpkg=./... -coverprofile=coverage.out
+          echo "Coverage report generated"
           go tool cover -func=coverage.out | tail -n1
+          
+      - name: Debug - Check coverage file
+        working-directory: ./src/lambda/binService
+        run: |
+          echo "Coverage file exists:"
+          ls -la coverage.out || echo "Coverage file not found"
+          echo "Coverage file content (first 10 lines):"
+          head -10 coverage.out || echo "Cannot read coverage file"
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -29,3 +50,5 @@ jobs:
           files: ./src/lambda/binService/coverage.out
           flags: unittests
           name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
