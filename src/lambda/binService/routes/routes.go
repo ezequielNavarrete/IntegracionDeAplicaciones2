@@ -17,6 +17,7 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/personas/zona/:zona", handlers.GetPersonasByZona)
 
 	// Endpoints para tachos
+	r.GET("/tachos", handlers.GetAllTachosHandler)    // Obtener todos los tachos
 	r.POST("/tachos", handlers.CreateTachoHandler)
 	r.DELETE("/tachos", handlers.DeleteTachoHandler) // Cambiado para usar query parameters
 	r.PUT("/tachos/:id_tacho/capacidad", handlers.UpdateCapacidadTachoHandler)

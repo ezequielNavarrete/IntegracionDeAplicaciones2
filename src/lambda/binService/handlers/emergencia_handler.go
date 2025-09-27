@@ -6,13 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RequestBody define cómo esperamos los datos del formulario
 type RequestBody struct {
 	Tipo        string `json:"tipo" example:"incendio"`
 	Descripcion string `json:"descripcion" example:"Incendio en edificio de oficinas"`
 }
 
-// ResponseBody define la respuesta de éxito
 type ResponseBody struct {
 	Message     string `json:"message" example:"Emergencia enviada correctamente"`
 	Tipo        string `json:"tipo" example:"incendio"`

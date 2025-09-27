@@ -118,3 +118,81 @@ type TachoMySQL struct {
 	IdNeo     string  `json:"id_neo" gorm:"column:id_neo"`
 	Capacidad float64 `json:"capacidad" gorm:"column:capacidad"`
 }
+
+// TachoCompleto representa un tacho con toda la información necesaria
+type TachoCompleto struct {
+	IDTacho   int     `json:"id_tacho" gorm:"column:id_tacho"`
+	Barrio    string  `json:"barrio" gorm:"column:barrio"`
+	Direccion string  `json:"direccion" gorm:"column:direccion"`
+	Latitud   float64 `json:"latitud" gorm:"column:latitud"`
+	Longitud  float64 `json:"longitud" gorm:"column:longitud"`
+	Estado    string  `json:"estado" gorm:"column:estado"`
+	Capacidad float64 `json:"capacidad" gorm:"column:capacidad"`
+}
+
+// GetAllTachos obtiene todos los tachos con información completa
+func GetAllTachos() ([]TachoCompleto, error) {
+	if config.DB == nil {
+		return nil, fmt.Errorf("database connection not available")
+	}
+
+	var tachos []TachoCompleto
+
+	// Query con JOIN para obtener el estado y datos de Neo4j parseados del id_neo
+	query := `
+		SELECT 
+			t.id_tacho,
+			SUBSTRING_INDEX(t.id_neo, '|', -1) as barrio,
+			SUBSTRING_INDEX(t.id_neo, '|', 1) as direccion,
+			t.id_neo as custom_id,
+			et.tipo_estado as estado,
+			t.capacidad
+		FROM Tacho t
+		INNER JOIN Estado_tacho et ON t.id_estado = et.id_estado_tacho
+	`
+
+	// Estructura temporal para obtener los datos de MySQL
+	type TachoTemp struct {
+		IDTacho   int     `gorm:"column:id_tacho"`
+		Barrio    string  `gorm:"column:barrio"`
+		Direccion string  `gorm:"column:direccion"`
+		CustomID  string  `gorm:"column:custom_id"`
+		Estado    string  `gorm:"column:estado"`
+		Capacidad float64 `gorm:"column:capacidad"`
+	}
+
+	var tachosTemp []TachoTemp
+	result := config.DB.Raw(query).Scan(&tachosTemp)
+	if result.Error != nil {
+		return nil, fmt.Errorf("error getting tachos: %v", result.Error)
+	}
+
+	// Obtener coordenadas de Neo4j
+	coordsMap, err := GetAllTachosCoordinates()
+	if err != nil {
+		return nil, fmt.Errorf("error getting coordinates: %v", err)
+	}
+
+	// Combinar los datos
+	for _, tachoTemp := range tachosTemp {
+		tacho := TachoCompleto{
+			IDTacho:   tachoTemp.IDTacho,
+			Barrio:    tachoTemp.Barrio,
+			Direccion: tachoTemp.Direccion,
+			Estado:    tachoTemp.Estado,
+			Capacidad: tachoTemp.Capacidad,
+			Latitud:   0, // Default en caso de no encontrar
+			Longitud:  0, // Default en caso de no encontrar
+		}
+
+		// Buscar las coordenadas en el map de Neo4j
+		if coords, found := coordsMap[tachoTemp.CustomID]; found {
+			tacho.Latitud = coords.Latitude
+			tacho.Longitud = coords.Longitude
+		}
+
+		tachos = append(tachos, tacho)
+	}
+
+	return tachos, nil
+}

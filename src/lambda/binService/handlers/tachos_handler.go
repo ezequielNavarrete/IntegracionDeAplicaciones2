@@ -94,3 +94,26 @@ func DeleteTachoHandler(c *gin.Context) {
 		"custom_id": finalCustomID,
 	})
 }
+
+// GetAllTachosHandler obtiene todos los tachos con información completa
+// @Summary Obtener todos los tachos
+// @Description Devuelve todos los tachos con barrio, dirección, latitud, longitud, estado y capacidad
+// @Tags Tachos
+// @Accept json
+// @Produce json
+// @Success 200 {array} services.TachoCompleto "Lista de todos los tachos"
+// @Failure 500 {object} map[string]string "Error interno del servidor"
+// @Router /tachos [get]
+func GetAllTachosHandler(c *gin.Context) {
+	// Obtener todos los tachos usando el servicio
+	tachos, err := services.GetAllTachos()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tachos": tachos,
+		"total":  len(tachos),
+	})
+}
