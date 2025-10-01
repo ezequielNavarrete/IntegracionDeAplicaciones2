@@ -240,7 +240,7 @@ func GetAllTachosCoordinates() (map[string]TachoNeo4j, error) {
 		coordsMap := make(map[string]TachoNeo4j)
 		for records.Next(ctx) {
 			record := records.Record()
-			
+
 			id, _ := record.Get("id")
 			barrio, _ := record.Get("barrio")
 			direccion, _ := record.Get("direccion")
