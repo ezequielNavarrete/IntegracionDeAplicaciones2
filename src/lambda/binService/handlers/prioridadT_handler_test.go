@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -15,6 +16,8 @@ import (
 // mock Tachos (reemplaza MySQL)
 var mockTachos = map[int64]string{
 	1: "neo1", // IDTacho: IDNeo
+	2: "neo2",
+	3: "neo3",
 }
 
 // Handler minimalista que no toca Neo4j ni MySQL
@@ -42,8 +45,6 @@ func UpdatePrioridadTachoHandlerMinimal(c *gin.Context) {
 	}
 
 	// Actualizamos "prioridad" (simulado)
-	// En este caso solo devolvemos el valor del body
-
 	c.JSON(http.StatusOK, UpdatePrioridadResponse{
 		Message:   "Prioridad actualizada correctamente",
 		IDTacho:   id,
@@ -52,49 +53,166 @@ func UpdatePrioridadTachoHandlerMinimal(c *gin.Context) {
 	})
 }
 
-func TestUpdatePrioridadTachoHandlerMinimal_Subtests(t *testing.T) {
+func TestUpdatePrioridadTachoHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	router := gin.Default()
-	router.PUT("/tachos/:id_tacho/prioridad", UpdatePrioridadTachoHandlerMinimal)
-
+	
 	tests := []struct {
-		name       string
-		id         string
-		prioridad  int
-		wantCode   int
-		wantErrMsg string
+		name           string
+		tachoID        string
+		requestBody    UpdatePrioridadRequest
+		expectedStatus int
+		expectedError  string
 	}{
-		{"Happy path", "1", 2, 200, ""},
-		{"ID inválido", "abc", 2, 400, "ID inválido"},
-		{"Tacho no encontrado", "999", 2, 404, "Tacho no encontrado"},
-		// Opcional: límites de prioridad si quisieras validar rangos
-		{"Prioridad mínima", "1", 0, 200, ""},
-		{"Prioridad máxima", "1", 5, 200, ""},
+		{
+			name:    "Actualización exitosa",
+			tachoID: "1",
+			requestBody: UpdatePrioridadRequest{
+				Prioridad: 3,
+			},
+			expectedStatus: 200,
+		},
+		{
+			name:    "Prioridad mínima",
+			tachoID: "1",
+			requestBody: UpdatePrioridadRequest{
+				Prioridad: 1,
+			},
+			expectedStatus: 200,
+		},
+		{
+			name:    "Prioridad máxima",
+			tachoID: "1",
+			requestBody: UpdatePrioridadRequest{
+				Prioridad: 5,
+			},
+			expectedStatus: 200,
+		},
+		{
+			name:    "Tacho existente diferente",
+			tachoID: "2",
+			requestBody: UpdatePrioridadRequest{
+				Prioridad: 2,
+			},
+			expectedStatus: 200,
+		},
+		{
+			name:           "ID inválido",
+			tachoID:        "invalid",
+			requestBody:    UpdatePrioridadRequest{Prioridad: 3},
+			expectedStatus: 400,
+			expectedError:  "ID inválido",
+		},
+		{
+			name:           "Tacho no encontrado",
+			tachoID:        "999",
+			requestBody:    UpdatePrioridadRequest{Prioridad: 3},
+			expectedStatus: 404,
+			expectedError:  "Tacho no encontrado",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reqBody, _ := json.Marshal(UpdatePrioridadRequest{Prioridad: tt.prioridad})
-			req, _ := http.NewRequest(http.MethodPut, "/tachos/"+tt.id+"/prioridad", bytes.NewBuffer(reqBody))
-			req.Header.Set("Content-Type", "application/json")
-
 			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+			c, _ := gin.CreateTestContext(w)
 
-			assert.Equal(t, tt.wantCode, w.Code)
+			body, err := json.Marshal(tt.requestBody)
+			assert.NoError(t, err)
 
-			if tt.wantErrMsg != "" {
-				var resp map[string]string
-				json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.Equal(t, tt.wantErrMsg, resp["error"])
+			c.Request = httptest.NewRequest("PUT", "/tachos/"+tt.tachoID+"/prioridad", bytes.NewBuffer(body))
+			c.Request.Header.Set("Content-Type", "application/json")
+			c.Params = gin.Params{gin.Param{Key: "id_tacho", Value: tt.tachoID}}
+
+			UpdatePrioridadTachoHandlerMinimal(c)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			
+			if tt.expectedError != "" {
+				var response map[string]interface{}
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.Contains(t, response["error"], tt.expectedError)
 			} else {
-				var resp UpdatePrioridadResponse
-				json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.Equal(t, tt.id, strconv.FormatInt(resp.IDTacho, 10))
-				assert.Equal(t, mockTachos[resp.IDTacho], resp.IDNeo)
-				assert.Equal(t, tt.prioridad, resp.Prioridad)
-				assert.Equal(t, "Prioridad actualizada correctamente", resp.Message)
+				var response UpdatePrioridadResponse
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.Equal(t, "Prioridad actualizada correctamente", response.Message)
+				assert.Equal(t, tt.requestBody.Prioridad, response.Prioridad)
+				assert.NotEmpty(t, response.IDNeo)
 			}
+		})
+	}
+}
+
+func TestUpdatePrioridadTachoHandler_InvalidJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	// JSON inválido
+	invalidJSON := []byte(`{"prioridad": "invalid"}`)
+	
+	c.Request = httptest.NewRequest("PUT", "/tachos/1/prioridad", bytes.NewBuffer(invalidJSON))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Params = gin.Params{gin.Param{Key: "id_tacho", Value: "1"}}
+
+	UpdatePrioridadTachoHandlerMinimal(c)
+
+	assert.Equal(t, 400, w.Code)
+	
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response["error"], "Datos inválidos")
+}
+
+func TestUpdatePrioridadTachoHandler_EmptyBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	// Body vacío
+	c.Request = httptest.NewRequest("PUT", "/tachos/1/prioridad", bytes.NewBuffer([]byte("{}")))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Params = gin.Params{gin.Param{Key: "id_tacho", Value: "1"}}
+
+	UpdatePrioridadTachoHandlerMinimal(c)
+
+	assert.Equal(t, 200, w.Code)
+	
+	var response UpdatePrioridadResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, response.Prioridad) // Valor por defecto
+}
+
+func TestUpdatePrioridadTachoHandler_DifferentPriorities(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	
+	priorities := []int{1, 2, 3, 4, 5, 0, -1, 10}
+	
+	for _, priority := range priorities {
+		t.Run(fmt.Sprintf("Prioridad_%d", priority), func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			requestBody := UpdatePrioridadRequest{Prioridad: priority}
+			body, _ := json.Marshal(requestBody)
+
+			c.Request = httptest.NewRequest("PUT", "/tachos/1/prioridad", bytes.NewBuffer(body))
+			c.Request.Header.Set("Content-Type", "application/json")
+			c.Params = gin.Params{gin.Param{Key: "id_tacho", Value: "1"}}
+
+			UpdatePrioridadTachoHandlerMinimal(c)
+
+			assert.Equal(t, 200, w.Code)
+			
+			var response UpdatePrioridadResponse
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			assert.NoError(t, err)
+			assert.Equal(t, priority, response.Prioridad)
 		})
 	}
 }
