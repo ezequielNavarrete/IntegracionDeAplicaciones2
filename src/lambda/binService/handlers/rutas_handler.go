@@ -23,7 +23,7 @@ import (
 // @Router /ruta-optima/{zonaID} [get]
 func GetRutaHandler(c *gin.Context) {
 	start := time.Now() // Para medir tiempo de cálculo
-	
+
 	zonaIDStr := c.Param("zonaID")
 	zonaID, err := strconv.Atoi(zonaIDStr)
 	if err != nil {
