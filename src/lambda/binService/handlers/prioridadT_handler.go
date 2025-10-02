@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/models"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -92,6 +93,10 @@ func UpdatePrioridadTachoHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar prioridad en Neo4j"})
 		return
 	}
+
+	// Actualizar métricas de Prometheus
+	// Nota: Necesitarías obtener la zona del tacho para las etiquetas completas
+	middleware.UpdateTachoPrioridad(idStr, "zona_desconocida", float64(body.Prioridad))
 
 	c.JSON(http.StatusOK, UpdatePrioridadResponse{
 		Message:   "Prioridad actualizada correctamente",

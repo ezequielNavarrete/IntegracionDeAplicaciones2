@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,6 +52,18 @@ func GetAllPersonas(c *gin.Context) {
 		}
 
 		result = append(result, persona)
+	}
+
+	// Actualizar métricas de Prometheus
+	middleware.UpdatePersonasMetrics(len(result))
+
+	// Contar personas por zona para actualizar métricas
+	zonaCount := make(map[string]int)
+	for _, persona := range result {
+		zonaCount[persona.ZonaID]++
+	}
+	for zona, count := range zonaCount {
+		middleware.UpdatePersonasPorZona(zona, count)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -154,6 +167,9 @@ func GetPersonasByZona(c *gin.Context) {
 			result = append(result, persona)
 		}
 	}
+
+	// Actualizar métricas de Prometheus para esta zona específica
+	middleware.UpdatePersonasPorZona(zonaStr, len(result))
 
 	c.JSON(http.StatusOK, gin.H{
 		"zona":     zona,
