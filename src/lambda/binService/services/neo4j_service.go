@@ -248,13 +248,21 @@ func GetAllTachosCoordinates() (map[string]TachoNeo4j, error) {
 			longitude, _ := record.Get("longitude")
 			prioridad, _ := record.Get("prioridad")
 
+			// Manejar valores nil para prioridad
+			var prioridadInt int
+			if prioridad != nil {
+				if prioridadVal, ok := prioridad.(int64); ok {
+					prioridadInt = int(prioridadVal)
+				}
+			}
+
 			tachoNeo := TachoNeo4j{
 				ID:        id.(string),
 				Barrio:    barrio.(string),
 				Direccion: direccion.(string),
 				Latitude:  latitude.(float64),
 				Longitude: longitude.(float64),
-				Prioridad: int(prioridad.(int64)),
+				Prioridad: prioridadInt,
 			}
 
 			coordsMap[id.(string)] = tachoNeo

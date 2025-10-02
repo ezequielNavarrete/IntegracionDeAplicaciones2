@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +35,11 @@ func CreateTachoHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Actualizar métricas después de crear exitosamente
+	// Incrementar contador de tachos para la zona (asumiendo que el barrio es la zona)
+	middleware.UpdateTachoCapacidad(string(rune(response.TachoID)), request.Barrio, request.Capacidad)
+	middleware.UpdateTachoPrioridad(string(rune(response.TachoID)), request.Barrio, float64(request.Prioridad))
 
 	c.JSON(http.StatusCreated, response)
 }

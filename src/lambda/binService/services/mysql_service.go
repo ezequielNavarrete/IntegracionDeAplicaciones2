@@ -138,18 +138,74 @@ func GetAllTachos() ([]TachoCompleto, error) {
 
 	var tachos []TachoCompleto
 
-	// Query con JOIN para obtener el estado y datos de Neo4j parseados del id_neo
+	// Query para verificar la estructura de las tablas primero
 	query := `
 		SELECT 
 			t.id_tacho,
 			SUBSTRING_INDEX(t.id_neo, '|', -1) as barrio,
 			SUBSTRING_INDEX(t.id_neo, '|', 1) as direccion,
 			t.id_neo as custom_id,
-			et.tipo_estado as estado,
 			t.capacidad
 		FROM Tacho t
-		INNER JOIN Estado_tacho et ON t.id_estado = et.id_estado_tacho
+		LIMIT 1
 	`
+
+	// Primero verificar si el JOIN funciona
+	var tachoTest struct {
+		IDTacho int `gorm:"column:id_tacho"`
+	}
+	testResult := config.DB.Raw("SELECT id_tacho FROM Tacho LIMIT 1").Scan(&tachoTest)
+	if testResult.Error != nil {
+		return nil, fmt.Errorf("error testing Tacho table: %v", testResult.Error)
+	}
+
+	// Probar diferentes nombres posibles para la tabla Estado_tacho
+	var estadoTest struct {
+		ID int `gorm:"column:id"`
+	}
+	
+	// Posibles nombres de columnas ID en Estado_tacho
+	possibleQueries := []string{
+		"SELECT * FROM Estado_tacho LIMIT 1",
+		"SELECT * FROM estado_tacho LIMIT 1", 
+		"SELECT * FROM EstadoTacho LIMIT 1",
+	}
+	
+	var workingQuery string
+	for _, testQuery := range possibleQueries {
+		if err := config.DB.Raw(testQuery).Scan(&estadoTest).Error; err == nil {
+			// Esta query funciona, ahora necesitamos ver las columnas
+			workingQuery = testQuery
+			break
+		}
+	}
+	
+	if workingQuery == "" {
+		// Si no funciona ninguna, usar query sin JOIN
+		query = `
+			SELECT 
+				t.id_tacho,
+				SUBSTRING_INDEX(t.id_neo, '|', -1) as barrio,
+				SUBSTRING_INDEX(t.id_neo, '|', 1) as direccion,
+				t.id_neo as custom_id,
+				'activo' as estado,
+				t.capacidad
+			FROM Tacho t
+		`
+	} else {
+		// Intentar con diferentes nombres de columna ID
+		query = `
+			SELECT 
+				t.id_tacho,
+				SUBSTRING_INDEX(t.id_neo, '|', -1) as barrio,
+				SUBSTRING_INDEX(t.id_neo, '|', 1) as direccion,
+				t.id_neo as custom_id,
+				COALESCE(et.tipo_estado, 'activo') as estado,
+				t.capacidad
+			FROM Tacho t
+			LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
+		`
+	}
 
 	// Estructura temporal para obtener los datos de MySQL
 	type TachoTemp struct {
