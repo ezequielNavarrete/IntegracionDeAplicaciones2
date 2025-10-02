@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +22,8 @@ import (
 // @Failure 500 {object} map[string]string "Error interno del servidor"
 // @Router /ruta-optima/{zonaID} [get]
 func GetRutaHandler(c *gin.Context) {
+	start := time.Now() // Para medir tiempo de cálculo
+	
 	zonaIDStr := c.Param("zonaID")
 	zonaID, err := strconv.Atoi(zonaIDStr)
 	if err != nil {
@@ -32,6 +36,11 @@ func GetRutaHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Registrar métricas de negocio
+	duration := time.Since(start).Seconds()
+	middleware.IncrementRutasOptimas(zonaIDStr)
+	middleware.ObserveRutaCalculoTime(zonaIDStr, duration)
 
 	c.JSON(http.StatusOK, points)
 }
