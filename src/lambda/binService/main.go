@@ -23,6 +23,7 @@ import (
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	_ "github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/docs" // Import generated docs
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/routes"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -47,6 +48,9 @@ func main() {
 
 	// start Gin server
 	r := gin.Default()
+
+	// Add Prometheus metrics middleware
+	r.Use(middleware.PrometheusMiddleware())
 
 	// Configuración de CORS
 	r.Use(cors.New(cors.Config{

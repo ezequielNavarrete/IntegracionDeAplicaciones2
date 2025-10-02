@@ -3,9 +3,13 @@ package routes
 import (
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/handlers"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func SetupRoutes(r *gin.Engine) {
+	// Prometheus metrics endpoint
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 	// API endpoints existentes
 	r.GET("/ruta-optima", handlers.GetRutaHandlerByHeader)
 	r.GET("/ruta-optima/:zonaID", handlers.GetRutaHandler)
