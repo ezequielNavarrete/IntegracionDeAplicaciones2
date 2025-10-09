@@ -26,4 +26,12 @@ func SetupRoutes(r *gin.Engine) {
 	r.DELETE("/tachos", handlers.DeleteTachoHandler) // Cambiado para usar query parameters
 	r.PUT("/tachos/:id_tacho/capacidad", handlers.UpdateCapacidadTachoHandler)
 	r.PUT("/tachos/:id_tacho/prioridad", handlers.UpdatePrioridadTachoHandler)
+
+	// Endpoints para camiones
+	r.GET("/camiones", handlers.GetAllCamionesHandler)    // Obtener todos los camiones con JOIN
+	r.GET("/camiones/:id", handlers.GetCamionByIDHandler) // Obtener camión por ID con JOIN
+
+	// Endpoints para centros
+	r.GET("/centros", handlers.GetAllCentrosHandler)     // Obtener todos los centros con JOIN MySQL + Neo4j
+	r.GET("/centros/:id", handlers.GetCentroByIDHandler) // Obtener centro por ID con JOIN MySQL + Neo4j
 }
