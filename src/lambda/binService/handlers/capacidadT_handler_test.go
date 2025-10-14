@@ -51,7 +51,7 @@ func UpdateCapacidadTachoHandlerMinimal(c *gin.Context) {
 func TestUpdateCapacidadTachoHandlerMinimal(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
-	router.PUT("/tachos/:id_tacho/capacidad", UpdateCapacidadTachoHandlerMinimal)
+	router.PUT("/tachos/:id_tacho/capacidad", UpdateCapacidadTachoHandler)
 
 	tests := []struct {
 		name       string
