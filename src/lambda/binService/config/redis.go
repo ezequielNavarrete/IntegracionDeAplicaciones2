@@ -201,8 +201,8 @@ func getCamionesOperativos() ([]CamionOperativo, error) {
 		WHERE c.id_estado = 1
 	`).Scan(&camiones)
 
-	if result.Error != nil {
-		return nil, fmt.Errorf("error querying operational trucks: %v", result.Error)
+	if err := result.Error(); err != nil {
+		return nil, fmt.Errorf("error querying operational trucks: %v", err)
 	}
 
 	log.Printf("Found %d operational trucks", len(camiones))
@@ -228,8 +228,8 @@ func getZonasDisponibles() ([]ZonaDisponible, error) {
 	// Usar Raw query con GORM
 	result := DB.Raw("SELECT id_zona, nombre FROM Zona ORDER BY id_zona").Scan(&zonas)
 
-	if result.Error != nil {
-		return nil, fmt.Errorf("error querying zones: %v", result.Error)
+	if err := result.Error(); err != nil {
+		return nil, fmt.Errorf("error querying zones: %v", err)
 	}
 
 	log.Printf("Found %d available zones", len(zonas))

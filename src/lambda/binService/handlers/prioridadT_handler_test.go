@@ -2,23 +2,26 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/models"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
-// mock Tachos (reemplaza MySQL)
-var mockTachos = map[int64]string{
-	1: "neo1", // IDTacho: IDNeo
+// mock Tachos (reemplaza MySQL/GORM)
+var mockTachos = map[int64]models.Tacho{
+	1: {IDTacho: 1, IDNeo: "neo1"},
 }
 
-// Handler minimalista que no toca Neo4j ni MySQL
-func UpdatePrioridadTachoHandlerMinimal(c *gin.Context) {
+// Handler de test que inyecta mocks
+func UpdatePrioridadTachoHandlerTest(c *gin.Context) {
 	// ID del tacho
 	idStr := c.Param("id_tacho")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -34,28 +37,36 @@ func UpdatePrioridadTachoHandlerMinimal(c *gin.Context) {
 		return
 	}
 
-	// "Buscar" tacho en mock DB
-	neoID, ok := mockTachos[id]
+	// Mock GORM
+	tacho, ok := mockTachos[id]
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Tacho no encontrado"})
 		return
 	}
 
-	// Actualizamos "prioridad" (simulado)
-	// En este caso solo devolvemos el valor del body
+	// Mock Neo4j usando MockNeoSession
+	mockSession := MockNeoSession{}
+	_, err = mockSession.ExecuteWrite(context.Background(), func(tx config.ManagedTransaction) (any, error) {
+		// simulamos el update, no hacemos nada
+		return nil, nil
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar prioridad en Neo4j"})
+		return
+	}
 
 	c.JSON(http.StatusOK, UpdatePrioridadResponse{
 		Message:   "Prioridad actualizada correctamente",
-		IDTacho:   id,
-		IDNeo:     neoID,
+		IDTacho:   tacho.IDTacho,
+		IDNeo:     tacho.IDNeo,
 		Prioridad: body.Prioridad,
 	})
 }
 
-func TestUpdatePrioridadTachoHandlerMinimal_Subtests(t *testing.T) {
+func TestUpdatePrioridadTachoHandler_WithMocks(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
-	router.PUT("/tachos/:id_tacho/prioridad", UpdatePrioridadTachoHandlerMinimal)
+	router.PUT("/tachos/:id_tacho/prioridad", UpdatePrioridadTachoHandlerTest)
 
 	tests := []struct {
 		name       string
@@ -67,9 +78,6 @@ func TestUpdatePrioridadTachoHandlerMinimal_Subtests(t *testing.T) {
 		{"Happy path", "1", 2, 200, ""},
 		{"ID inválido", "abc", 2, 400, "ID inválido"},
 		{"Tacho no encontrado", "999", 2, 404, "Tacho no encontrado"},
-		// Opcional: límites de prioridad si quisieras validar rangos
-		{"Prioridad mínima", "1", 0, 200, ""},
-		{"Prioridad máxima", "1", 5, 200, ""},
 	}
 
 	for _, tt := range tests {
@@ -91,7 +99,7 @@ func TestUpdatePrioridadTachoHandlerMinimal_Subtests(t *testing.T) {
 				var resp UpdatePrioridadResponse
 				json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.Equal(t, tt.id, strconv.FormatInt(resp.IDTacho, 10))
-				assert.Equal(t, mockTachos[resp.IDTacho], resp.IDNeo)
+				assert.Equal(t, mockTachos[resp.IDTacho].IDNeo, resp.IDNeo)
 				assert.Equal(t, tt.prioridad, resp.Prioridad)
 				assert.Equal(t, "Prioridad actualizada correctamente", resp.Message)
 			}

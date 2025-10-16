@@ -54,7 +54,8 @@ func UpdatePrioridadTachoHandler(c *gin.Context) {
 
 	// Obtener id_neo desde MySQL/GORM (usa config.DB global)
 	var tacho models.Tacho
-	if err := config.DB.WithContext(c).First(&tacho, id).Error; err != nil {
+	res := config.DB.WithContext(c).First(&tacho, id)
+	if err := res.Error(); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Tacho no encontrado"})
 			return
