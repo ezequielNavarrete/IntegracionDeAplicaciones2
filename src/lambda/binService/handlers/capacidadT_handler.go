@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/models"
 	"github.com/gin-gonic/gin"
 )
@@ -57,6 +58,10 @@ func UpdateCapacidadTachoHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar capacidad"})
 		return
 	}
+
+	// Actualizar métricas de Prometheus
+	// Nota: Necesitarías obtener la zona del tacho para las etiquetas completas
+	middleware.UpdateTachoCapacidad(idStr, "zona_desconocida", body.Capacidad)
 
 	c.JSON(http.StatusOK, UpdateCapacidadResponse{
 		Message:   "Capacidad actualizada correctamente",

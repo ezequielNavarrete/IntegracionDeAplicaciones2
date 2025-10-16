@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,6 +36,10 @@ func SendEmergencyHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
 		return
 	}
+
+	// Actualizar métricas de Prometheus
+	// Nota: Asumo zona genérica, podrías obtener la zona del contexto o header
+	middleware.IncrementEmergencias(body.Tipo, "zona_general")
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "Emergencia enviada correctamente",

@@ -27,9 +27,17 @@ build/
 .terraform/
 .terraform.lock.hcl
 
-# Environment variables
+# Environment variables (IMPORTANT: Never commit secrets!)
 .env
 .env.local
+.env.production
+.env.staging
+
+# Configuration files with credentials
+*config*.yml
+*config*.yaml
+prometheus*.yml
+prometheus*.yaml
 
 # IDE
 .vscode/
