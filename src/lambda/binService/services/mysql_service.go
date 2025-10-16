@@ -70,6 +70,8 @@ func deleteTachoFromMySQL(tachoID int, customID string) error {
 	return nil
 }
 
+/*
+
 // getTachoByID obtiene un tacho de MySQL por su ID
 func getTachoByID(tachoID int) (*TachoMySQL, error) {
 	if config.DB == nil {
@@ -109,7 +111,7 @@ func getTachoByNeoID(neoNodeID string) (*TachoMySQL, error) {
 	}
 
 	return &tacho, nil
-}
+}*/
 
 // TachoMySQL representa un tacho en la base de datos MySQL
 type TachoMySQL struct {
@@ -156,31 +158,32 @@ func GetAllTachos() ([]TachoCompleto, error) {
 		IDTacho int `gorm:"column:id_tacho"`
 	}
 	testResult := config.DB.Raw("SELECT id_tacho FROM Tacho LIMIT 1").Scan(&tachoTest)
-	if testResult.Error != nil {
-		return nil, fmt.Errorf("error testing Tacho table: %v", testResult.Error)
+	if testResult.Error() != nil {
+		return nil, fmt.Errorf("error testing Tacho table: %v", testResult.Error())
 	}
 
 	// Probar diferentes nombres posibles para la tabla Estado_tacho
 	var estadoTest struct {
 		ID int `gorm:"column:id"`
 	}
-	
+
 	// Posibles nombres de columnas ID en Estado_tacho
 	possibleQueries := []string{
 		"SELECT * FROM Estado_tacho LIMIT 1",
-		"SELECT * FROM estado_tacho LIMIT 1", 
+		"SELECT * FROM estado_tacho LIMIT 1",
 		"SELECT * FROM EstadoTacho LIMIT 1",
 	}
-	
+
 	var workingQuery string
 	for _, testQuery := range possibleQueries {
-		if err := config.DB.Raw(testQuery).Scan(&estadoTest).Error; err == nil {
+		res := config.DB.Raw(testQuery).Scan(&estadoTest)
+		if res.Error() == nil {
 			// Esta query funciona, ahora necesitamos ver las columnas
 			workingQuery = testQuery
 			break
 		}
 	}
-	
+
 	if workingQuery == "" {
 		// Si no funciona ninguna, usar query sin JOIN
 		query = `
