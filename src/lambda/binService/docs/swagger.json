@@ -17,6 +17,176 @@
     },
     "basePath": "/",
     "paths": {
+        "/camiones": {
+            "get": {
+                "description": "Obtiene una lista de todos los camiones con información de tipo y estado mediante JOINs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Camiones"
+                ],
+                "summary": "Obtener todos los camiones",
+                "responses": {
+                    "200": {
+                        "description": "Lista de camiones obtenida exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/services.CamionesResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/camiones/{id}": {
+            "get": {
+                "description": "Obtiene la información completa de un camión específico mediante su ID, incluyendo tipo y estado",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Camiones"
+                ],
+                "summary": "Obtener un camión por ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del camión",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Camión obtenido exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/services.CamionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "ID de camión inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Camión no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/centros": {
+            "get": {
+                "description": "Obtiene una lista de todos los centros con información de tipo (MySQL) y datos adicionales como nombre, barrio, dirección, coordenadas (Neo4j)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Centros"
+                ],
+                "summary": "Obtener todos los centros",
+                "responses": {
+                    "200": {
+                        "description": "Lista de centros obtenida exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/services.CentrosResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/centros/{id}": {
+            "get": {
+                "description": "Obtiene la información completa de un centro específico mediante su ID, incluyendo tipo (MySQL) y datos adicionales como nombre, barrio, dirección, coordenadas (Neo4j)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Centros"
+                ],
+                "summary": "Obtener un centro por ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del centro",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Centro obtenido exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/services.CentroResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "ID de centro inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Centro no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/enviar-emergencia": {
             "post": {
                 "description": "Registra una nueva emergencia en el sistema",
@@ -674,6 +844,94 @@
                     "type": "string"
                 },
                 "prioridad": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.Camion": {
+            "type": "object",
+            "properties": {
+                "id_camion": {
+                    "type": "integer"
+                },
+                "nombre_tipo": {
+                    "type": "string"
+                },
+                "tipo_estado": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.CamionResponse": {
+            "type": "object",
+            "properties": {
+                "camion": {
+                    "$ref": "#/definitions/services.Camion"
+                }
+            }
+        },
+        "services.CamionesResponse": {
+            "type": "object",
+            "properties": {
+                "camiones": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.Camion"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.Centro": {
+            "type": "object",
+            "properties": {
+                "barrio": {
+                    "type": "string"
+                },
+                "direccion": {
+                    "type": "string"
+                },
+                "id_centro": {
+                    "type": "integer"
+                },
+                "id_neo": {
+                    "type": "string"
+                },
+                "latitud": {
+                    "type": "number"
+                },
+                "longitud": {
+                    "type": "number"
+                },
+                "nombre": {
+                    "description": "Información adicional de Neo4j",
+                    "type": "string"
+                },
+                "nombre_tipo": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.CentroResponse": {
+            "type": "object",
+            "properties": {
+                "centro": {
+                    "$ref": "#/definitions/services.Centro"
+                }
+            }
+        },
+        "services.CentrosResponse": {
+            "type": "object",
+            "properties": {
+                "centros": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.Centro"
+                    }
+                },
+                "total": {
                     "type": "integer"
                 }
             }

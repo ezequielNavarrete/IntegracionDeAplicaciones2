@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -22,7 +23,7 @@ import (
 // @Failure 500 {object} map[string]string "Error interno del servidor"
 // @Router /ruta-optima/{zonaID} [get]
 func GetRutaHandler(c *gin.Context) {
-	start := time.Now() // Para medir tiempo de cálculo
+	start := time.Now() // Para medir tiempo de cálculo cuando haya que calcular
 
 	zonaIDStr := c.Param("zonaID")
 	zonaID, err := strconv.Atoi(zonaIDStr)
@@ -31,13 +32,28 @@ func GetRutaHandler(c *gin.Context) {
 		return
 	}
 
+	// Intentar obtener la ruta desde caché Redis
+	if cached, err := services.GetCachedRoute(zonaID); err == nil && len(cached) > 0 {
+		// Cache hit: devolver inmediatamente
+		c.JSON(http.StatusOK, cached)
+		return
+	}
+
+	// Cache miss: calcular ruta
 	points, err := services.GetDistances(zonaID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Registrar métricas de negocio
+	// Guardar en caché (no bloquear la respuesta en caso de error de cache)
+	if err := services.SetCachedRoute(zonaID, points); err != nil {
+		// Loguear pero no interrumpir
+		// fmt.Printf se evita en producción; usar logger si existe. Por ahora simple print.
+		fmt.Printf("Warning: failed to set cached route for zona %d: %v\n", zonaID, err)
+	}
+
+	// Registrar métricas de negocio solo en cálculos reales
 	duration := time.Since(start).Seconds()
 	middleware.IncrementRutasOptimas(zonaIDStr)
 	middleware.ObserveRutaCalculoTime(zonaIDStr, duration)
