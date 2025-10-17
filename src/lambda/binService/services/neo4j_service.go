@@ -9,12 +9,12 @@ import (
 )
 
 // getSession obtiene una sesión reutilizable de Neo4j usando el pool
+var getSessionFunc = func() (neo4j.SessionWithContext, error) {
+	return config.GetNeo4jSession()
+}
+
 func getSession() (neo4j.SessionWithContext, error) {
-	session, err := config.GetNeo4jSession()
-	if err != nil {
-		return nil, fmt.Errorf("no se pudo obtener sesión de Neo4j: %v", err)
-	}
-	return session, nil
+	return getSessionFunc()
 }
 
 // createTachoInNeo4j crea un nodo Tacho en Neo4j y retorna su ID
@@ -134,6 +134,7 @@ func deleteTachoFromNeo4j(neoNodeID string, customID string) error {
 	return nil
 }
 
+/*
 // getTachoFromNeo4j obtiene un tacho de Neo4j por su elementId o ID personalizado
 func getTachoFromNeo4j(neoNodeID string, customID string) (*TachoNeo4j, error) {
 	session, err := getSession()
@@ -149,8 +150,8 @@ func getTachoFromNeo4j(neoNodeID string, customID string) (*TachoNeo4j, error) {
 		query = `
 			MATCH (t:Tacho)
 			WHERE elementId(t) = $nodeId
-			RETURN t.barrio as barrio, t.direccion as direccion, t.id as id, 
-				   t.location.latitude as latitude, t.location.longitude as longitude, 
+			RETURN t.barrio as barrio, t.direccion as direccion, t.id as id,
+				   t.location.latitude as latitude, t.location.longitude as longitude,
 				   t.prioridad as prioridad, elementId(t) as nodeId
 		`
 		params = map[string]interface{}{"nodeId": neoNodeID}
@@ -202,7 +203,7 @@ func getTachoFromNeo4j(neoNodeID string, customID string) (*TachoNeo4j, error) {
 	}
 
 	return result.(*TachoNeo4j), nil
-}
+}*/
 
 // TachoNeo4j representa un tacho en Neo4j
 type TachoNeo4j struct {

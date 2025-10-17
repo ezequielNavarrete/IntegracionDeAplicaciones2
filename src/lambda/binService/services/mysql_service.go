@@ -24,14 +24,14 @@ func createTachoInMySQL(request CreateTachoRequest, customID string) (int, error
 		customID, // Usar el ID personalizado (direccion|barrio) en lugar del ID interno de Neo4j
 		request.Capacidad)
 
-	if result.Error != nil {
-		return 0, fmt.Errorf("error inserting tacho: %v", result.Error)
+	if result.Error() != nil {
+		return 0, fmt.Errorf("error inserting tacho: %v", result.Error())
 	}
 
 	// Obtener el ID generado por la inserción
 	var tachoID int64
-	if result := config.DB.Raw("SELECT LAST_INSERT_ID()").Scan(&tachoID); result.Error != nil {
-		return 0, fmt.Errorf("error getting inserted ID: %v", result.Error)
+	if result := config.DB.Raw("SELECT LAST_INSERT_ID()").Scan(&tachoID); result.Error() != nil {
+		return 0, fmt.Errorf("error getting inserted ID: %v", result.Error())
 	}
 
 	return int(tachoID), nil
@@ -59,16 +59,18 @@ func deleteTachoFromMySQL(tachoID int, customID string) error {
 	}
 
 	result := config.DB.Exec(query, params...)
-	if result.Error != nil {
-		return fmt.Errorf("error deleting tacho from MySQL: %v", result.Error)
+	if result.Error() != nil {
+		return fmt.Errorf("error deleting tacho from MySQL: %v", result.Error())
 	}
 
-	if result.RowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		return fmt.Errorf("no se encontró el tacho para eliminar")
 	}
 
 	return nil
 }
+
+/*
 
 // getTachoByID obtiene un tacho de MySQL por su ID
 func getTachoByID(tachoID int) (*TachoMySQL, error) {
@@ -79,11 +81,12 @@ func getTachoByID(tachoID int) (*TachoMySQL, error) {
 	var tacho TachoMySQL
 	result := config.DB.Raw("SELECT id_tacho, id_tipo, id_estado, id_neo, capacidad FROM Tacho WHERE id_tacho = ?", tachoID).Scan(&tacho)
 
-	if result.Error != nil {
-		return nil, fmt.Errorf("error getting tacho: %v", result.Error)
+	if result.Error() != nil {
+		return nil, fmt.Errorf("error getting tacho: %v", result.Error())
 	}
 
-	if result.RowsAffected == 0 {
+	// Verificamos si el registro está vacío en vez de usar RowsAffected()
+	if tacho.ID == 0 {
 		return nil, fmt.Errorf("tacho not found")
 	}
 
@@ -99,16 +102,16 @@ func getTachoByNeoID(neoNodeID string) (*TachoMySQL, error) {
 	var tacho TachoMySQL
 	result := config.DB.Raw("SELECT id_tacho, id_tipo, id_estado, id_neo, capacidad FROM Tacho WHERE id_neo = ?", neoNodeID).Scan(&tacho)
 
-	if result.Error != nil {
-		return nil, fmt.Errorf("error getting tacho: %v", result.Error)
+	if result.Error() != nil {
+		return nil, fmt.Errorf("error getting tacho: %v", result.Error())
 	}
 
-	if result.RowsAffected == 0 {
+	if tacho.ID == 0 {
 		return nil, fmt.Errorf("tacho not found")
 	}
 
 	return &tacho, nil
-}
+}*/
 
 // TachoMySQL representa un tacho en la base de datos MySQL
 type TachoMySQL struct {
@@ -155,31 +158,32 @@ func GetAllTachos() ([]TachoCompleto, error) {
 		IDTacho int `gorm:"column:id_tacho"`
 	}
 	testResult := config.DB.Raw("SELECT id_tacho FROM Tacho LIMIT 1").Scan(&tachoTest)
-	if testResult.Error != nil {
-		return nil, fmt.Errorf("error testing Tacho table: %v", testResult.Error)
+	if testResult.Error() != nil {
+		return nil, fmt.Errorf("error testing Tacho table: %v", testResult.Error())
 	}
 
 	// Probar diferentes nombres posibles para la tabla Estado_tacho
 	var estadoTest struct {
 		ID int `gorm:"column:id"`
 	}
-	
+
 	// Posibles nombres de columnas ID en Estado_tacho
 	possibleQueries := []string{
 		"SELECT * FROM Estado_tacho LIMIT 1",
-		"SELECT * FROM estado_tacho LIMIT 1", 
+		"SELECT * FROM estado_tacho LIMIT 1",
 		"SELECT * FROM EstadoTacho LIMIT 1",
 	}
-	
+
 	var workingQuery string
 	for _, testQuery := range possibleQueries {
-		if err := config.DB.Raw(testQuery).Scan(&estadoTest).Error; err == nil {
+		res := config.DB.Raw(testQuery).Scan(&estadoTest)
+		if res.Error() == nil {
 			// Esta query funciona, ahora necesitamos ver las columnas
 			workingQuery = testQuery
 			break
 		}
 	}
-	
+
 	if workingQuery == "" {
 		// Si no funciona ninguna, usar query sin JOIN
 		query = `
@@ -219,8 +223,8 @@ func GetAllTachos() ([]TachoCompleto, error) {
 
 	var tachosTemp []TachoTemp
 	result := config.DB.Raw(query).Scan(&tachosTemp)
-	if result.Error != nil {
-		return nil, fmt.Errorf("error getting tachos: %v", result.Error)
+	if result.Error() != nil {
+		return nil, fmt.Errorf("error getting tachos: %v", result.Error())
 	}
 
 	// Obtener coordenadas de Neo4j

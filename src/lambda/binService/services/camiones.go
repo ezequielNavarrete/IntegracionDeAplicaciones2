@@ -46,8 +46,9 @@ func GetAllCamiones() (*CamionesResponse, error) {
 		ORDER BY c.id_camion ASC
 	`
 
-	if err := config.DB.Raw(query).Scan(&camiones).Error; err != nil {
-		return nil, fmt.Errorf("error querying camiones: %v", err)
+	result := config.DB.Raw(query).Scan(&camiones)
+	if result.Error() != nil {
+		return nil, fmt.Errorf("error querying camiones: %v", result.Error())
 	}
 
 	return &CamionesResponse{
@@ -77,9 +78,9 @@ func GetCamionByID(camionID int) (*CamionResponse, error) {
 		LEFT JOIN Estado_camion ec ON c.id_estado = ec.id_estado
 		WHERE c.id_camion = ?
 	`
-
-	if err := config.DB.Raw(query, camionID).Scan(&camion).Error; err != nil {
-		return nil, fmt.Errorf("error querying camion: %v", err)
+	result := config.DB.Raw(query, camionID).Scan(&camion)
+	if result.Error() != nil {
+		return nil, fmt.Errorf("error querying camion: %v", result.Error())
 	}
 
 	// Verificar si se encontró el camión

@@ -59,7 +59,7 @@ func GetAllCentros() (*CentrosResponse, error) {
 		ORDER BY c.id_centro ASC
 	`
 
-	if err := config.DB.Raw(query).Scan(&centrosMySQL).Error; err != nil {
+	if err := config.DB.Raw(query).Scan(&centrosMySQL).Error(); err != nil {
 		return nil, fmt.Errorf("error querying centros from MySQL: %v", err)
 	}
 
@@ -124,7 +124,7 @@ func GetCentroByID(centroID int) (*CentroResponse, error) {
 		WHERE c.id_centro = ?
 	`
 
-	if err := config.DB.Raw(query, centroID).Scan(&centroMySQL).Error; err != nil {
+	if err := config.DB.Raw(query, centroID).Scan(&centroMySQL).Error(); err != nil {
 		return nil, fmt.Errorf("error querying centro from MySQL: %v", err)
 	}
 

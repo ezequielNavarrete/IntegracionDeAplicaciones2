@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var DB *gorm.DB
+var DB DBExecutor // variable global para la DB
 
 func ConnectDatabase() {
 	// load var from .env
@@ -37,11 +37,13 @@ func ConnectDatabase() {
 		user, pass, host, port, dbname)
 
 	// Connect with GORM
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	gormDB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("❌ No se pudo conectar a la DB:", err)
 	}
 
 	fmt.Println("✅ Conexión exitosa a MySQL")
-	DB = db
+
+	// Guardamos el *gorm.DB como DBExecutor
+	DB = &gormWrapper{db: gormDB}
 }

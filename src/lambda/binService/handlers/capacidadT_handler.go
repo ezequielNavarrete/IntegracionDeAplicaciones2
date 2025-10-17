@@ -54,7 +54,7 @@ func UpdateCapacidadTachoHandler(c *gin.Context) {
 		return
 	}
 
-	if err := config.DB.Model(&models.Tacho{}).Where("id_tacho = ?", id).Update("capacidad", body.Capacidad).Error; err != nil {
+	if err := config.DB.Model(&models.Tacho{}).Where("id_tacho = ?", id).Update("capacidad", body.Capacidad).Error(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar capacidad"})
 		return
 	}
