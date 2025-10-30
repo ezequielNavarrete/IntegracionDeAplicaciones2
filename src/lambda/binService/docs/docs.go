@@ -194,6 +194,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/cron/update-routes": {
+            "post": {
+                "description": "Calcula y almacena en caché las rutas óptimas para todas las zonas",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cron"
+                ],
+                "summary": "Actualizar todas las rutas en caché",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave de API para cron jobs",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultados de la actualización",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/enviar-emergencia": {
             "post": {
                 "description": "Registra una nueva emergencia en el sistema",
@@ -272,9 +323,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/personas/zona/{zona}": {
+        "/personas/emails": {
             "get": {
-                "description": "Devuelve todas las personas asignadas a una zona específica",
+                "description": "Devuelve todas las personas con sus emails asignados para saber qué email usar en cada ruta",
                 "consumes": [
                     "application/json"
                 ],
@@ -284,19 +335,52 @@ const docTemplate = `{
                 "tags": [
                     "Personas"
                 ],
-                "summary": "Obtener personas por zona",
+                "summary": "Obtener listado de personas con emails",
+                "responses": {
+                    "200": {
+                        "description": "Listado de personas con emails",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/personas/neighborhood/{neighborhood}": {
+            "get": {
+                "description": "Devuelve todas las personas asignadas a un barrio específico",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Obtener personas por barrio",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Número de zona",
-                        "name": "zona",
+                        "description": "Número de barrio",
+                        "name": "neighborhood",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Personas de la zona",
+                        "description": "Personas del barrio",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -306,6 +390,41 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/personas/regenerate": {
+            "post": {
+                "description": "Regenera todas las personas con sus emails desde las rutas existentes en cache",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Regenerar personas desde rutas",
+                "responses": {
+                    "200": {
+                        "description": "Personas regeneradas exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error regenerando personas",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -347,6 +466,134 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Persona no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/routes/neighborhood/{neighborhood}": {
+            "get": {
+                "description": "Devuelve todas las rutas simplificadas guardadas en caché para un barrio específico",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas"
+                ],
+                "summary": "Obtener rutas de un barrio",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del barrio",
+                        "name": "neighborhood",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de rutas del barrio",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/services.SimplifiedRoute"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Neighborhood ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No se encontraron rutas",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/routes/neighborhood/{neighborhood}/route/{routeNumber}": {
+            "get": {
+                "description": "Devuelve una ruta simplificada específica desde caché",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas"
+                ],
+                "summary": "Obtener ruta específica",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del barrio",
+                        "name": "neighborhood",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de ruta",
+                        "name": "routeNumber",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ruta solicitada",
+                        "schema": {
+                            "$ref": "#/definitions/services.SimplifiedRoute"
+                        }
+                    },
+                    "400": {
+                        "description": "Parámetros inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ruta no encontrada",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -756,20 +1003,144 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v2/ruta-optima": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Devuelve la ruta óptima asignada al usuario basándose en el email del JWT",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas V2"
+                ],
+                "summary": "Obtener ruta óptima del usuario (v2)",
+                "responses": {
+                    "200": {
+                        "description": "Ruta asignada al usuario",
+                        "schema": {
+                            "$ref": "#/definitions/services.SimplifiedRoute"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado o sin ruta asignada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/ruta-optima-by-header": {
+            "get": {
+                "description": "Devuelve la ruta óptima asignada al usuario basándose en el header X-User-Email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas V2"
+                ],
+                "summary": "Obtener ruta óptima del usuario por header (v2)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email del usuario",
+                        "name": "X-User-Email",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ruta asignada al usuario",
+                        "schema": {
+                            "$ref": "#/definitions/services.SimplifiedRoute"
+                        }
+                    },
+                    "400": {
+                        "description": "Header faltante",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado o sin ruta asignada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
         "handlers.PersonaResponse": {
             "type": "object",
             "properties": {
-                "camion_id": {
+                "email": {
+                    "description": "✨ Nuevo: email asociado",
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "zona_id": {
+                "neighborhood_id": {
+                    "type": "integer"
+                },
+                "nombre": {
                     "type": "string"
+                },
+                "route_number": {
+                    "type": "integer"
+                },
+                "truck_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -943,6 +1314,17 @@ const docTemplate = `{
                 }
             }
         },
+        "services.Coordinate": {
+            "type": "object",
+            "properties": {
+                "lat": {
+                    "type": "number"
+                },
+                "lon": {
+                    "type": "number"
+                }
+            }
+        },
         "services.CreateTachoRequest": {
             "type": "object",
             "properties": {
@@ -984,6 +1366,40 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tacho_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.SimplifiedRoute": {
+            "type": "object",
+            "properties": {
+                "bins_coords": {
+                    "description": "Coordenadas de tachos en orden",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.Coordinate"
+                    }
+                },
+                "neighborhood": {
+                    "type": "integer"
+                },
+                "path_coords": {
+                    "description": "Coordenadas del path completo",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.Coordinate"
+                    }
+                },
+                "route_id": {
+                    "type": "string"
+                },
+                "total_bins": {
+                    "type": "integer"
+                },
+                "total_distance_km": {
+                    "type": "number"
+                },
+                "truck_id": {
                     "type": "integer"
                 }
             }

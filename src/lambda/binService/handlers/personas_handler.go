@@ -14,9 +14,12 @@ var ctx = context.Background()
 
 // PersonaResponse represents the response for persona data
 type PersonaResponse struct {
-	ID       string `json:"id"`
-	ZonaID   string `json:"zona_id"`
-	CamionID string `json:"camion_id"`
+	ID             string `json:"id"`
+	Nombre         string `json:"nombre"`
+	Email          string `json:"email"` // ✨ Nuevo: email asociado
+	NeighborhoodID int    `json:"neighborhood_id"`
+	RouteNumber    int    `json:"route_number"`
+	TruckID        int    `json:"truck_id"`
 }
 
 // GetAllPersonas obtiene todas las personas de Redis
@@ -29,7 +32,6 @@ type PersonaResponse struct {
 // @Failure 500 {object} map[string]string "Error interno del servidor"
 // @Router /personas [get]
 func GetAllPersonas(c *gin.Context) {
-	config.InitializePersonsData()
 	personas, err := config.RedisClient.LRange(ctx, "personas", 0, -1).Result()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error obteniendo personas de Redis"})
@@ -45,10 +47,17 @@ func GetAllPersonas(c *gin.Context) {
 			continue
 		}
 
+		neighborhoodID, _ := strconv.Atoi(personData["neighborhood_id"])
+		routeNumber, _ := strconv.Atoi(personData["route_number"])
+		truckID, _ := strconv.Atoi(personData["truck_id"])
+
 		persona := PersonaResponse{
-			ID:       personData["id"],
-			ZonaID:   personData["zona_id"],
-			CamionID: personData["camion_id"],
+			ID:             personData["id"],
+			Nombre:         personData["nombre"],
+			Email:          personData["email"],
+			NeighborhoodID: neighborhoodID,
+			RouteNumber:    routeNumber,
+			TruckID:        truckID,
 		}
 
 		result = append(result, persona)
@@ -57,13 +66,14 @@ func GetAllPersonas(c *gin.Context) {
 	// Actualizar métricas de Prometheus
 	middleware.UpdatePersonasMetrics(len(result))
 
-	// Contar personas por zona para actualizar métricas
-	zonaCount := make(map[string]int)
+	// Contar personas por neighborhood para actualizar métricas
+	neighborhoodCount := make(map[string]int)
 	for _, persona := range result {
-		zonaCount[persona.ZonaID]++
+		key := strconv.Itoa(persona.NeighborhoodID)
+		neighborhoodCount[key]++
 	}
-	for zona, count := range zonaCount {
-		middleware.UpdatePersonasPorZona(zona, count)
+	for neighborhood, count := range neighborhoodCount {
+		middleware.UpdatePersonasPorZona(neighborhood, count)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -93,7 +103,6 @@ func GetPersonaByID(c *gin.Context) {
 
 	personKey := "persona:" + strconv.Itoa(id)
 
-	config.InitializePersonsData()
 	// Verificar si existe
 	exists, err := config.RedisClient.Exists(ctx, personKey).Result()
 	if err != nil {
@@ -113,34 +122,40 @@ func GetPersonaByID(c *gin.Context) {
 		return
 	}
 
+	neighborhoodID, _ := strconv.Atoi(personData["neighborhood_id"])
+	routeNumber, _ := strconv.Atoi(personData["route_number"])
+	truckID, _ := strconv.Atoi(personData["truck_id"])
+
 	persona := PersonaResponse{
-		ID:       personData["id"],
-		ZonaID:   personData["zona_id"],
-		CamionID: personData["camion_id"],
+		ID:             personData["id"],
+		Nombre:         personData["nombre"],
+		Email:          personData["email"],
+		NeighborhoodID: neighborhoodID,
+		RouteNumber:    routeNumber,
+		TruckID:        truckID,
 	}
 
 	c.JSON(http.StatusOK, persona)
 }
 
-// GetPersonasByZona obtiene personas de una zona específica
-// @Summary Obtener personas por zona
-// @Description Devuelve todas las personas asignadas a una zona específica
+// GetPersonasByNeighborhood obtiene personas de un barrio específico
+// @Summary Obtener personas por barrio
+// @Description Devuelve todas las personas asignadas a un barrio específico
 // @Tags Personas
 // @Accept json
 // @Produce json
-// @Param zona path int true "Número de zona"
-// @Success 200 {array} PersonaResponse "Personas de la zona"
+// @Param neighborhood path int true "Número de barrio"
+// @Success 200 {array} PersonaResponse "Personas del barrio"
 // @Failure 500 {object} map[string]string "Error interno del servidor"
-// @Router /personas/zona/{zona} [get]
-func GetPersonasByZona(c *gin.Context) {
-	zonaStr := c.Param("zona")
-	zona, err := strconv.Atoi(zonaStr)
+// @Router /personas/neighborhood/{neighborhood} [get]
+func GetPersonasByNeighborhood(c *gin.Context) {
+	neighborhoodStr := c.Param("neighborhood")
+	neighborhood, err := strconv.Atoi(neighborhoodStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Zona inválida"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Neighborhood inválido"})
 		return
 	}
 
-	config.InitializePersonsData()
 	// Obtener todas las personas
 	personas, err := config.RedisClient.LRange(ctx, "personas", 0, -1).Result()
 	if err != nil {
@@ -150,30 +165,36 @@ func GetPersonasByZona(c *gin.Context) {
 
 	var result []PersonaResponse
 
-	// Filtrar por zona
+	// Filtrar por neighborhood
 	for _, personKey := range personas {
 		personData, err := config.RedisClient.HGetAll(ctx, personKey).Result()
 		if err != nil {
 			continue
 		}
 
-		personZona, _ := strconv.Atoi(personData["zona_id"])
-		if personZona == zona {
+		personNeighborhood, _ := strconv.Atoi(personData["neighborhood_id"])
+		if personNeighborhood == neighborhood {
+			routeNumber, _ := strconv.Atoi(personData["route_number"])
+			truckID, _ := strconv.Atoi(personData["truck_id"])
+
 			persona := PersonaResponse{
-				ID:       personData["id"],
-				ZonaID:   personData["zona_id"],
-				CamionID: personData["camion_id"],
+				ID:             personData["id"],
+				Nombre:         personData["nombre"],
+				Email:          personData["email"],
+				NeighborhoodID: personNeighborhood,
+				RouteNumber:    routeNumber,
+				TruckID:        truckID,
 			}
 			result = append(result, persona)
 		}
 	}
 
-	// Actualizar métricas de Prometheus para esta zona específica
-	middleware.UpdatePersonasPorZona(zonaStr, len(result))
+	// Actualizar métricas de Prometheus para este barrio específico
+	middleware.UpdatePersonasPorZona(neighborhoodStr, len(result))
 
 	c.JSON(http.StatusOK, gin.H{
-		"zona":     zona,
-		"total":    len(result),
-		"personas": result,
+		"neighborhood": neighborhood,
+		"total":        len(result),
+		"personas":     result,
 	})
 }

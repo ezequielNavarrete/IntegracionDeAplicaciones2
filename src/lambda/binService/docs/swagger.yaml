@@ -2,12 +2,19 @@ basePath: /
 definitions:
   handlers.PersonaResponse:
     properties:
-      camion_id:
+      email:
+        description: '✨ Nuevo: email asociado'
         type: string
       id:
         type: string
-      zona_id:
+      neighborhood_id:
+        type: integer
+      nombre:
         type: string
+      route_number:
+        type: integer
+      truck_id:
+        type: integer
     type: object
   handlers.RequestBody:
     properties:
@@ -122,6 +129,13 @@ definitions:
       total:
         type: integer
     type: object
+  services.Coordinate:
+    properties:
+      lat:
+        type: number
+      lon:
+        type: number
+    type: object
   services.CreateTachoRequest:
     properties:
       barrio:
@@ -150,6 +164,29 @@ definitions:
       neo_node_id:
         type: string
       tacho_id:
+        type: integer
+    type: object
+  services.SimplifiedRoute:
+    properties:
+      bins_coords:
+        description: Coordenadas de tachos en orden
+        items:
+          $ref: '#/definitions/services.Coordinate'
+        type: array
+      neighborhood:
+        type: integer
+      path_coords:
+        description: Coordenadas del path completo
+        items:
+          $ref: '#/definitions/services.Coordinate'
+        type: array
+      route_id:
+        type: string
+      total_bins:
+        type: integer
+      total_distance_km:
+        type: number
+      truck_id:
         type: integer
     type: object
   services.TachoCompleto:
@@ -299,6 +336,40 @@ paths:
       summary: Obtener un centro por ID
       tags:
       - Centros
+  /cron/update-routes:
+    post:
+      consumes:
+      - application/json
+      description: Calcula y almacena en caché las rutas óptimas para todas las zonas
+      parameters:
+      - description: Clave de API para cron jobs
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Resultados de la actualización
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: No autorizado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Actualizar todas las rutas en caché
+      tags:
+      - Cron
   /enviar-emergencia:
     post:
       consumes:
@@ -383,22 +454,45 @@ paths:
       summary: Obtener persona por ID
       tags:
       - Personas
-  /personas/zona/{zona}:
+  /personas/emails:
     get:
       consumes:
       - application/json
-      description: Devuelve todas las personas asignadas a una zona específica
+      description: Devuelve todas las personas con sus emails asignados para saber
+        qué email usar en cada ruta
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Listado de personas con emails
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener listado de personas con emails
+      tags:
+      - Personas
+  /personas/neighborhood/{neighborhood}:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve todas las personas asignadas a un barrio específico
       parameters:
-      - description: Número de zona
+      - description: Número de barrio
         in: path
-        name: zona
+        name: neighborhood
         required: true
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Personas de la zona
+          description: Personas del barrio
           schema:
             items:
               $ref: '#/definitions/handlers.PersonaResponse'
@@ -409,9 +503,119 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Obtener personas por zona
+      summary: Obtener personas por barrio
       tags:
       - Personas
+  /personas/regenerate:
+    post:
+      consumes:
+      - application/json
+      description: Regenera todas las personas con sus emails desde las rutas existentes
+        en cache
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Personas regeneradas exitosamente
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error regenerando personas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Regenerar personas desde rutas
+      tags:
+      - Personas
+  /routes/neighborhood/{neighborhood}:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve todas las rutas simplificadas guardadas en caché para
+        un barrio específico
+      parameters:
+      - description: ID del barrio
+        in: path
+        name: neighborhood
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de rutas del barrio
+          schema:
+            items:
+              $ref: '#/definitions/services.SimplifiedRoute'
+            type: array
+        "400":
+          description: Neighborhood ID inválido
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: No se encontraron rutas
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener rutas de un barrio
+      tags:
+      - Rutas
+  /routes/neighborhood/{neighborhood}/route/{routeNumber}:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve una ruta simplificada específica desde caché
+      parameters:
+      - description: ID del barrio
+        in: path
+        name: neighborhood
+        required: true
+        type: integer
+      - description: Número de ruta
+        in: path
+        name: routeNumber
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ruta solicitada
+          schema:
+            $ref: '#/definitions/services.SimplifiedRoute'
+        "400":
+          description: Parámetros inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Ruta no encontrada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener ruta específica
+      tags:
+      - Rutas
   /ruta-optima:
     get:
       consumes:
@@ -674,4 +878,80 @@ paths:
       summary: Actualizar capacidad del tacho
       tags:
       - Tachos
+  /v2/ruta-optima:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve la ruta óptima asignada al usuario basándose en el email
+        del JWT
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ruta asignada al usuario
+          schema:
+            $ref: '#/definitions/services.SimplifiedRoute'
+        "401":
+          description: No autorizado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Usuario no encontrado o sin ruta asignada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Obtener ruta óptima del usuario (v2)
+      tags:
+      - Rutas V2
+  /v2/ruta-optima-by-header:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve la ruta óptima asignada al usuario basándose en el header
+        X-User-Email
+      parameters:
+      - description: Email del usuario
+        in: header
+        name: X-User-Email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ruta asignada al usuario
+          schema:
+            $ref: '#/definitions/services.SimplifiedRoute'
+        "400":
+          description: Header faltante
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Usuario no encontrado o sin ruta asignada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener ruta óptima del usuario por header (v2)
+      tags:
+      - Rutas V2
 swagger: "2.0"

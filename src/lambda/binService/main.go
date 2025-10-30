@@ -37,6 +37,12 @@ func main() {
 	// Connect to Redis and initialize data
 	config.ConnectRedis()
 
+	// Connect to MongoDB
+	if err := config.InitMongoDB(); err != nil {
+		log.Printf("Warning: MongoDB connection failed: %v", err)
+	}
+	defer config.CloseMongoDB()
+
 	// Initialize Neo4j driver pool
 	_, err := config.GetNeo4jDriver()
 	if err != nil {
