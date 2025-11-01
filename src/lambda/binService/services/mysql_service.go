@@ -7,21 +7,21 @@ import (
 )
 
 // createTachoInMySQL crea un tacho en la tabla MySQL y retorna su ID
-func createTachoInMySQL(request CreateTachoRequest, customID string) (int, error) {
+func createTachoInMySQL(request CreateTachoRequest, mongoID int) (int, error) {
 	if config.DB == nil {
 		return 0, fmt.Errorf("database connection not available")
 	}
 
 	// Query para insertar en la tabla Tacho
 	query := `
-		INSERT INTO Tacho (id_tipo, id_estado, id_neo, capacidad) 
+		INSERT INTO Tacho (id_tipo, id_estado, id_mongo, capacidad) 
 		VALUES (?, ?, ?, ?)
 	`
 
 	result := config.DB.Exec(query,
 		request.IdTipo,
 		request.IdEstado,
-		customID, // Usar el ID personalizado (direccion|barrio) en lugar del ID interno de Neo4j
+		mongoID, // ID del documento de MongoDB
 		request.Capacidad)
 
 	if result.Error() != nil {
@@ -37,8 +37,8 @@ func createTachoInMySQL(request CreateTachoRequest, customID string) (int, error
 	return int(tachoID), nil
 }
 
-// deleteTachoFromMySQL elimina un tacho de MySQL por ID o por custom ID
-func deleteTachoFromMySQL(tachoID int, customID string) error {
+// deleteTachoFromMySQL elimina un tacho de MySQL por ID o por ID de MongoDB
+func deleteTachoFromMySQL(tachoID int, mongoID int) error {
 	if config.DB == nil {
 		return fmt.Errorf("database connection not available")
 	}
@@ -50,12 +50,12 @@ func deleteTachoFromMySQL(tachoID int, customID string) error {
 		// Eliminar por ID del tacho
 		query = "DELETE FROM Tacho WHERE id_tacho = ?"
 		params = []interface{}{tachoID}
-	} else if customID != "" {
-		// Eliminar por custom ID (que está guardado en id_neo)
-		query = "DELETE FROM Tacho WHERE id_neo LIKE ?"
-		params = []interface{}{"%" + customID + "%"}
+	} else if mongoID > 0 {
+		// Eliminar por ID de MongoDB
+		query = "DELETE FROM Tacho WHERE id_mongo = ?"
+		params = []interface{}{mongoID}
 	} else {
-		return fmt.Errorf("debe proporcionar tachoID o customID para eliminar")
+		return fmt.Errorf("debe proporcionar tachoID o mongoID para eliminar")
 	}
 
 	result := config.DB.Exec(query, params...)
@@ -118,19 +118,18 @@ type TachoMySQL struct {
 	ID        int     `json:"id_tacho" gorm:"column:id_tacho"`
 	IdTipo    int     `json:"id_tipo" gorm:"column:id_tipo"`
 	IdEstado  int     `json:"id_estado" gorm:"column:id_estado"`
-	IdNeo     string  `json:"id_neo" gorm:"column:id_neo"`
+	IdMongo   int     `json:"id_mongo" gorm:"column:id_mongo"`
 	Capacidad float64 `json:"capacidad" gorm:"column:capacidad"`
 }
 
 // TachoCompleto representa un tacho con toda la información necesaria
 type TachoCompleto struct {
-	IDTacho   int     `json:"id_tacho" gorm:"column:id_tacho"`
-	Barrio    string  `json:"barrio" gorm:"column:barrio"`
-	Direccion string  `json:"direccion" gorm:"column:direccion"`
-	Latitud   float64 `json:"latitud" gorm:"column:latitud"`
-	Longitud  float64 `json:"longitud" gorm:"column:longitud"`
-	Estado    string  `json:"estado" gorm:"column:estado"`
-	Capacidad float64 `json:"capacidad" gorm:"column:capacidad"`
+	IDTacho      int     `json:"id_tacho" gorm:"column:id_tacho"`
+	Neighborhood int     `json:"neighborhood" gorm:"column:neighborhood"`
+	Latitud      float64 `json:"latitud" gorm:"column:latitud"`
+	Longitud     float64 `json:"longitud" gorm:"column:longitud"`
+	Estado       string  `json:"estado" gorm:"column:estado"`
+	Capacidad    float64 `json:"capacidad" gorm:"column:capacidad"`
 }
 
 // GetAllTachos obtiene todos los tachos con información completa
@@ -141,82 +140,21 @@ func GetAllTachos() ([]TachoCompleto, error) {
 
 	var tachos []TachoCompleto
 
-	// Query para verificar la estructura de las tablas primero
+	// Query base para obtener tachos desde MySQL
 	query := `
 		SELECT 
 			t.id_tacho,
-			SUBSTRING_INDEX(t.id_neo, '|', -1) as barrio,
-			SUBSTRING_INDEX(t.id_neo, '|', 1) as direccion,
-			t.id_neo as custom_id,
+			t.id_mongo,
+			COALESCE(et.tipo_estado, 'activo') as estado,
 			t.capacidad
 		FROM Tacho t
-		LIMIT 1
+		LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
 	`
-
-	// Primero verificar si el JOIN funciona
-	var tachoTest struct {
-		IDTacho int `gorm:"column:id_tacho"`
-	}
-	testResult := config.DB.Raw("SELECT id_tacho FROM Tacho LIMIT 1").Scan(&tachoTest)
-	if testResult.Error() != nil {
-		return nil, fmt.Errorf("error testing Tacho table: %v", testResult.Error())
-	}
-
-	// Probar diferentes nombres posibles para la tabla Estado_tacho
-	var estadoTest struct {
-		ID int `gorm:"column:id"`
-	}
-
-	// Posibles nombres de columnas ID en Estado_tacho
-	possibleQueries := []string{
-		"SELECT * FROM Estado_tacho LIMIT 1",
-		"SELECT * FROM estado_tacho LIMIT 1",
-		"SELECT * FROM EstadoTacho LIMIT 1",
-	}
-
-	var workingQuery string
-	for _, testQuery := range possibleQueries {
-		res := config.DB.Raw(testQuery).Scan(&estadoTest)
-		if res.Error() == nil {
-			// Esta query funciona, ahora necesitamos ver las columnas
-			workingQuery = testQuery
-			break
-		}
-	}
-
-	if workingQuery == "" {
-		// Si no funciona ninguna, usar query sin JOIN
-		query = `
-			SELECT 
-				t.id_tacho,
-				SUBSTRING_INDEX(t.id_neo, '|', -1) as barrio,
-				SUBSTRING_INDEX(t.id_neo, '|', 1) as direccion,
-				t.id_neo as custom_id,
-				'activo' as estado,
-				t.capacidad
-			FROM Tacho t
-		`
-	} else {
-		// Intentar con diferentes nombres de columna ID
-		query = `
-			SELECT 
-				t.id_tacho,
-				SUBSTRING_INDEX(t.id_neo, '|', -1) as barrio,
-				SUBSTRING_INDEX(t.id_neo, '|', 1) as direccion,
-				t.id_neo as custom_id,
-				COALESCE(et.tipo_estado, 'activo') as estado,
-				t.capacidad
-			FROM Tacho t
-			LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
-		`
-	}
 
 	// Estructura temporal para obtener los datos de MySQL
 	type TachoTemp struct {
 		IDTacho   int     `gorm:"column:id_tacho"`
-		Barrio    string  `gorm:"column:barrio"`
-		Direccion string  `gorm:"column:direccion"`
-		CustomID  string  `gorm:"column:custom_id"`
+		IDMongo   int     `gorm:"column:id_mongo"`
 		Estado    string  `gorm:"column:estado"`
 		Capacidad float64 `gorm:"column:capacidad"`
 	}
@@ -227,28 +165,28 @@ func GetAllTachos() ([]TachoCompleto, error) {
 		return nil, fmt.Errorf("error getting tachos: %v", result.Error())
 	}
 
-	// Obtener coordenadas de Neo4j
-	coordsMap, err := GetAllTachosCoordinates()
+	// Obtener coordenadas y neighborhood desde MongoDB
+	coordsMap, err := GetAllTachosFromMongoDB()
 	if err != nil {
-		return nil, fmt.Errorf("error getting coordinates: %v", err)
+		return nil, fmt.Errorf("error getting coordinates from MongoDB: %v", err)
 	}
 
 	// Combinar los datos
 	for _, tachoTemp := range tachosTemp {
 		tacho := TachoCompleto{
-			IDTacho:   tachoTemp.IDTacho,
-			Barrio:    tachoTemp.Barrio,
-			Direccion: tachoTemp.Direccion,
-			Estado:    tachoTemp.Estado,
-			Capacidad: tachoTemp.Capacidad,
-			Latitud:   0, // Default en caso de no encontrar
-			Longitud:  0, // Default en caso de no encontrar
+			IDTacho:      tachoTemp.IDTacho,
+			Estado:       tachoTemp.Estado,
+			Capacidad:    tachoTemp.Capacidad,
+			Neighborhood: 0, // Default en caso de no encontrar
+			Latitud:      0, // Default en caso de no encontrar
+			Longitud:     0, // Default en caso de no encontrar
 		}
 
-		// Buscar las coordenadas en el map de Neo4j
-		if coords, found := coordsMap[tachoTemp.CustomID]; found {
-			tacho.Latitud = coords.Latitude
-			tacho.Longitud = coords.Longitude
+		// Buscar las coordenadas en el map de MongoDB
+		if mongoData, found := coordsMap[tachoTemp.IDMongo]; found {
+			tacho.Latitud = mongoData.Lat
+			tacho.Longitud = mongoData.Lon
+			tacho.Neighborhood = mongoData.Neighborhood
 		}
 
 		tachos = append(tachos, tacho)

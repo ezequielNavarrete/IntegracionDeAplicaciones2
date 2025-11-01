@@ -57,3 +57,80 @@ func SetCachedRoute(zonaID int, points []Point) error {
 
 	return config.RedisClient.Set(ctx, key, b, defaultTTL).Err()
 }
+
+// SetSimplifiedRoute guarda una ruta simplificada en Redis con formato barrio_X_ruta_Y
+func SetSimplifiedRoute(route SimplifiedRoute, routeNumber int) error {
+	if config.RedisClient == nil {
+		return fmt.Errorf("redis client not available")
+	}
+
+	ctx := context.Background()
+	key := fmt.Sprintf("barrio_%d_ruta_%d", route.Neighborhood, routeNumber)
+
+	// Convertir la ruta a JSON
+	b, err := json.Marshal(route)
+	if err != nil {
+		return fmt.Errorf("error marshaling route: %w", err)
+	}
+
+	// Guardar en Redis con TTL
+	if err := config.RedisClient.Set(ctx, key, b, defaultTTL).Err(); err != nil {
+		return fmt.Errorf("error setting route in Redis: %w", err)
+	}
+
+	return nil
+}
+
+// GetSimplifiedRoute obtiene una ruta simplificada desde Redis
+func GetSimplifiedRoute(neighborhood int, routeNumber int) (*SimplifiedRoute, error) {
+	if config.RedisClient == nil {
+		return nil, fmt.Errorf("redis client not available")
+	}
+
+	ctx := context.Background()
+	key := fmt.Sprintf("barrio_%d_ruta_%d", neighborhood, routeNumber)
+
+	val, err := config.RedisClient.Get(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var route SimplifiedRoute
+	if err := json.Unmarshal([]byte(val), &route); err != nil {
+		return nil, fmt.Errorf("error unmarshaling route: %w", err)
+	}
+
+	return &route, nil
+}
+
+// GetAllRoutesForNeighborhood obtiene todas las rutas de un barrio
+func GetAllRoutesForNeighborhood(neighborhood int) ([]SimplifiedRoute, error) {
+	if config.RedisClient == nil {
+		return nil, fmt.Errorf("redis client not available")
+	}
+
+	ctx := context.Background()
+	pattern := fmt.Sprintf("barrio_%d_ruta_*", neighborhood)
+
+	keys, err := config.RedisClient.Keys(ctx, pattern).Result()
+	if err != nil {
+		return nil, fmt.Errorf("error getting keys: %w", err)
+	}
+
+	routes := make([]SimplifiedRoute, 0, len(keys))
+	for _, key := range keys {
+		val, err := config.RedisClient.Get(ctx, key).Result()
+		if err != nil {
+			continue
+		}
+
+		var route SimplifiedRoute
+		if err := json.Unmarshal([]byte(val), &route); err != nil {
+			continue
+		}
+
+		routes = append(routes, route)
+	}
+
+	return routes, nil
+}

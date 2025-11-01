@@ -10,6 +10,7 @@ services:
       - .env
     depends_on:
       - redis
+      - mongodb
     environment:
       # App Configuration
       APP_PORT: ${APP_PORT:-8080}
@@ -22,6 +23,10 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_HOST: ${MYSQL_HOST}
       MYSQL_PORT: ${MYSQL_PORT:-3306}
+      
+      # MongoDB Configuration
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-tachos}
       
       # Neo4j Configuration
       NEO4J_URI: ${NEO4J_URI}
@@ -38,6 +43,11 @@ services:
       
       # Redis Configuration
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_TTL_SECONDS: ${REDIS_TTL_SECONDS:-300}
+      
+      # Route Service Configuration
+      ROUTE_SERVICE_URL: ${ROUTE_SERVICE_URL}
+      CRON_API_KEY: ${CRON_API_KEY}
       
       # Server Configuration
       PORT: ${PORT:-8080}
@@ -54,6 +64,18 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-tachos}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    command: mongod --quiet --logpath /dev/null
 
   prometheus:
     image: prom/prometheus:latest
@@ -80,4 +102,6 @@ services:
 
 volumes:
   redis_data:
+  mongodb_data:
+  mongodb_config:
   prometheus_data:

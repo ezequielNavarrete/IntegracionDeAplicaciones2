@@ -89,6 +89,15 @@ var (
 		},
 		[]string{"database_type", "operation"},
 	)
+
+	// Cron job metrics
+	cronUpdateDuration = promauto.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "cron_update_routes_duration_seconds",
+			Help:    "Time taken to update all routes via cron job",
+			Buckets: []float64{10, 30, 60, 120, 300, 600},
+		},
+	)
 )
 
 // Business metrics helper functions
@@ -141,4 +150,9 @@ func UpdateDatabaseConnections(dbType string, count int) {
 // IncrementDatabaseErrors increments database error counter
 func IncrementDatabaseErrors(dbType, operation string) {
 	databaseErrors.WithLabelValues(dbType, operation).Inc()
+}
+
+// ObserveCronUpdateTime observes the time taken for cron update job
+func ObserveCronUpdateTime(duration float64) {
+	cronUpdateDuration.Observe(duration)
 }

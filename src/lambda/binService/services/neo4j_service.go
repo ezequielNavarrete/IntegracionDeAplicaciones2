@@ -17,57 +17,10 @@ func getSession() (neo4j.SessionWithContext, error) {
 	return getSessionFunc()
 }
 
-// createTachoInNeo4j crea un nodo Tacho en Neo4j y retorna su ID
+// createTachoInNeo4j DEPRECATED: Los tachos ahora se guardan en MongoDB, no en Neo4j
+// Esta función ya no debe usarse para crear tachos
 func createTachoInNeo4j(request CreateTachoRequest) (string, error) {
-	session, err := getSession()
-	if err != nil {
-		return "", err
-	}
-	defer session.Close(context.Background())
-
-	// Crear el nodo con point() para la ubicación geográfica
-	query := `
-		CREATE (t:Tacho {
-			barrio: $barrio,
-			direccion: $direccion,
-			id: $id,
-			location: point({latitude: $latitude, longitude: $longitude}),
-			prioridad: $prioridad
-		})
-		RETURN elementId(t) as nodeId
-	`
-
-	// Generar un ID único para el tacho (puedes usar una estrategia diferente)
-	tachoNeoID := fmt.Sprintf("%s|%s", request.Direccion, request.Barrio)
-
-	result, err := session.ExecuteWrite(context.Background(), func(tx neo4j.ManagedTransaction) (interface{}, error) {
-		ctx := context.Background()
-		result, err := tx.Run(ctx, query, map[string]interface{}{
-			"barrio":    request.Barrio,
-			"direccion": request.Direccion,
-			"id":        tachoNeoID,
-			"latitude":  request.Latitude,
-			"longitude": request.Longitude,
-			"prioridad": request.Prioridad,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		record, err := result.Single(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		nodeId, _ := record.Get("nodeId")
-		return nodeId.(string), nil
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	return result.(string), nil
+	return "", fmt.Errorf("DEPRECATED: createTachoInNeo4j ya no se usa. Los tachos ahora están en MongoDB")
 }
 
 // deleteTachoFromNeo4j elimina un nodo Tacho de Neo4j por su elementId o por su id personalizado

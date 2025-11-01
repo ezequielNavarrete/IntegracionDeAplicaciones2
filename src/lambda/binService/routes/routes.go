@@ -15,10 +15,16 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/ruta-optima/:zonaID", handlers.GetRutaHandler)
 	r.POST("/enviar-emergencia", handlers.SendEmergencyHandler)
 
+	// Endpoints V2 de ruta óptima (basados en usuario autenticado)
+	r.GET("/v2/ruta-optima", handlers.GetRutaHandlerV2)                   // Con JWT
+	r.GET("/v2/ruta-optima-by-header", handlers.GetRutaHandlerV2ByHeader) // Con header X-User-Email
+
 	// Nuevos endpoints para personas (Redis)
 	r.GET("/personas", handlers.GetAllPersonas)
 	r.GET("/personas/:id", handlers.GetPersonaByID)
-	r.GET("/personas/zona/:zona", handlers.GetPersonasByZona)
+	r.GET("/personas/neighborhood/:neighborhood", handlers.GetPersonasByNeighborhood)
+	r.GET("/personas/emails", handlers.GetPersonasWithEmails)          // Nuevo: lista con emails
+	r.POST("/personas/regenerate", handlers.RegeneratePersonasHandler) // Nuevo: regenerar personas
 
 	// Endpoints para tachos
 	r.GET("/tachos", handlers.GetAllTachosHandler) // Obtener todos los tachos
@@ -34,4 +40,11 @@ func SetupRoutes(r *gin.Engine) {
 	// Endpoints para centros
 	r.GET("/centros", handlers.GetAllCentrosHandler)     // Obtener todos los centros con JOIN MySQL + Neo4j
 	r.GET("/centros/:id", handlers.GetCentroByIDHandler) // Obtener centro por ID con JOIN MySQL + Neo4j
+
+	// Endpoints para cron jobs
+	r.POST("/cron/update-routes", handlers.UpdateAllRoutesHandler) // Actualizar todas las rutas en caché
+
+	// Endpoints para consultar rutas cacheadas
+	r.GET("/routes/neighborhood/:neighborhood", handlers.GetRoutesByNeighborhoodHandler)             // Obtener todas las rutas de un barrio
+	r.GET("/routes/neighborhood/:neighborhood/route/:routeNumber", handlers.GetSpecificRouteHandler) // Obtener una ruta específica
 }

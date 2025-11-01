@@ -1,23 +1,19 @@
 package services
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 )
 
-// Estructura para representar un centro con información completa (MySQL + Neo4j)
+// Estructura para representar un centro con información completa (MySQL + MongoDB)
 type Centro struct {
-	IDCentro   int    `json:"id_centro" gorm:"column:id_centro"`
-	NombreTipo string `json:"nombre_tipo" gorm:"column:nombre_tipo"`
-	IDNeo      string `json:"id_neo" gorm:"column:id_neo"`
-	// Información adicional de Neo4j
-	Nombre    string  `json:"nombre"`
-	Barrio    string  `json:"barrio"`
-	Direccion string  `json:"direccion"`
-	Longitud  float64 `json:"longitud"`
-	Latitud   float64 `json:"latitud"`
+	IDCentro     int     `json:"id_centro" gorm:"column:id_centro"`
+	NombreTipo   string  `json:"nombre_tipo" gorm:"column:nombre_tipo"`
+	IDMongo      int     `json:"id_mongo" gorm:"column:id_mongo"`
+	Neighborhood int     `json:"neighborhood"`
+	Longitud     float64 `json:"longitud"`
+	Latitud      float64 `json:"latitud"`
 }
 
 // Estructura para respuesta de centros
@@ -31,7 +27,7 @@ type CentroResponse struct {
 	Centro Centro `json:"centro"`
 }
 
-// GetAllCentros obtiene todos los centros con información de tipo (MySQL) y datos adicionales (Neo4j)
+// GetAllCentros obtiene todos los centros con información de tipo (MySQL) y datos adicionales (MongoDB)
 func GetAllCentros() (*CentrosResponse, error) {
 	if config.DB == nil {
 		return nil, fmt.Errorf("database connection not available")
@@ -42,7 +38,7 @@ func GetAllCentros() (*CentrosResponse, error) {
 		IDCentro   int    `gorm:"column:id_centro"`
 		IDTipo     int    `gorm:"column:id_tipo"`
 		NombreTipo string `gorm:"column:nombre_tipo"`
-		IDNeo      string `gorm:"column:id_neo"`
+		IDMongo    int    `gorm:"column:id_mongo"`
 	}
 
 	var centrosMySQL []CentroMySQL
@@ -53,7 +49,7 @@ func GetAllCentros() (*CentrosResponse, error) {
 			c.id_centro,
 			c.id_tipo,
 			tc.nombre_tipo,
-			c.id_neo
+			c.id_mongo
 		FROM Centro c
 		LEFT JOIN Tipo_centro tc ON c.id_tipo = tc.id_tipo
 		ORDER BY c.id_centro ASC
@@ -63,28 +59,26 @@ func GetAllCentros() (*CentrosResponse, error) {
 		return nil, fmt.Errorf("error querying centros from MySQL: %v", err)
 	}
 
-	// Convertir a estructura completa y obtener datos de Neo4j
+	// Obtener depots desde MongoDB
+	depotsMap, err := GetAllDepotsFromMongoDB()
+	if err != nil {
+		return nil, fmt.Errorf("error getting depots from MongoDB: %v", err)
+	}
+
+	// Convertir a estructura completa y obtener datos de MongoDB
 	var centros []Centro
 	for _, centroMySQL := range centrosMySQL {
 		centro := Centro{
 			IDCentro:   centroMySQL.IDCentro,
 			NombreTipo: centroMySQL.NombreTipo,
-			IDNeo:      centroMySQL.IDNeo,
+			IDMongo:    centroMySQL.IDMongo,
 		}
 
-		// Obtener información adicional de Neo4j
-		if centroMySQL.IDNeo != "" {
-			neoData, err := getCentroFromNeo4j(centroMySQL.IDNeo)
-			if err != nil {
-				// Log error pero continúa con otros centros
-				fmt.Printf("Warning: Error getting Neo4j data for centro %s: %v\n", centroMySQL.IDNeo, err)
-			} else {
-				centro.Nombre = neoData.Nombre
-				centro.Barrio = neoData.Barrio
-				centro.Direccion = neoData.Direccion
-				centro.Longitud = neoData.Longitud
-				centro.Latitud = neoData.Latitud
-			}
+		// Obtener información adicional de MongoDB si existe IDMongo
+		if depotData, found := depotsMap[centroMySQL.IDMongo]; found {
+			centro.Neighborhood = depotData.Neighborhood
+			centro.Longitud = depotData.Lon
+			centro.Latitud = depotData.Lat
 		}
 
 		centros = append(centros, centro)
@@ -107,7 +101,7 @@ func GetCentroByID(centroID int) (*CentroResponse, error) {
 		IDCentro   int    `gorm:"column:id_centro"`
 		IDTipo     int    `gorm:"column:id_tipo"`
 		NombreTipo string `gorm:"column:nombre_tipo"`
-		IDNeo      string `gorm:"column:id_neo"`
+		IDMongo    int    `gorm:"column:id_mongo"`
 	}
 
 	var centroMySQL CentroMySQL
@@ -118,7 +112,7 @@ func GetCentroByID(centroID int) (*CentroResponse, error) {
 			c.id_centro,
 			c.id_tipo,
 			tc.nombre_tipo,
-			c.id_neo
+			c.id_mongo
 		FROM Centro c
 		LEFT JOIN Tipo_centro tc ON c.id_tipo = tc.id_tipo
 		WHERE c.id_centro = ?
@@ -137,20 +131,18 @@ func GetCentroByID(centroID int) (*CentroResponse, error) {
 	centro := Centro{
 		IDCentro:   centroMySQL.IDCentro,
 		NombreTipo: centroMySQL.NombreTipo,
-		IDNeo:      centroMySQL.IDNeo,
+		IDMongo:    centroMySQL.IDMongo,
 	}
 
-	// Obtener información adicional de Neo4j si existe IDNeo
-	if centroMySQL.IDNeo != "" {
-		neoData, err := getCentroFromNeo4j(centroMySQL.IDNeo)
+	// Obtener información adicional de MongoDB si existe IDMongo
+	if centroMySQL.IDMongo > 0 {
+		depotData, err := GetDepotByIDFromMongoDB(centroMySQL.IDMongo)
 		if err != nil {
-			return nil, fmt.Errorf("error getting Neo4j data for centro %s: %v", centroMySQL.IDNeo, err)
+			return nil, fmt.Errorf("error getting MongoDB data for centro %d: %v", centroMySQL.IDMongo, err)
 		}
-		centro.Nombre = neoData.Nombre
-		centro.Barrio = neoData.Barrio
-		centro.Direccion = neoData.Direccion
-		centro.Longitud = neoData.Longitud
-		centro.Latitud = neoData.Latitud
+		centro.Neighborhood = depotData.Neighborhood
+		centro.Longitud = depotData.Lon
+		centro.Latitud = depotData.Lat
 	}
 
 	return &CentroResponse{
@@ -158,80 +150,5 @@ func GetCentroByID(centroID int) (*CentroResponse, error) {
 	}, nil
 }
 
-// Estructura para datos de Neo4j
-type CentroNeo4jData struct {
-	Nombre    string  `json:"nombre"`
-	Barrio    string  `json:"barrio"`
-	Direccion string  `json:"direccion"`
-	Longitud  float64 `json:"longitud"`
-	Latitud   float64 `json:"latitud"`
-}
-
-// getCentroFromNeo4j obtiene información adicional del centro desde Neo4j
-func getCentroFromNeo4j(idNeo string) (*CentroNeo4jData, error) {
-	session, err := config.GetNeo4jSession()
-	if err != nil {
-		return nil, fmt.Errorf("error getting Neo4j session: %v", err)
-	}
-	defer session.Close(context.Background())
-
-	// Query para obtener información del centro en Neo4j incluyendo coordenadas del campo location
-	query := `
-		MATCH (c) 
-		WHERE c.id = $id_neo
-		RETURN c.nombre as nombre, c.barrio as barrio, c.direccion as direccion, 
-		       c.location.longitude as longitud, c.location.latitude as latitud
-	`
-
-	result, err := session.Run(context.Background(), query, map[string]interface{}{
-		"id_neo": idNeo,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error executing Neo4j query: %v", err)
-	}
-
-	if result.Next(context.Background()) {
-		record := result.Record()
-
-		// Obtener valores con verificación de nulos
-		nombre, _ := record.Get("nombre")
-		barrio, _ := record.Get("barrio")
-		direccion, _ := record.Get("direccion")
-		longitud, _ := record.Get("longitud")
-		latitud, _ := record.Get("latitud")
-
-		return &CentroNeo4jData{
-			Nombre:    getStringValue(nombre),
-			Barrio:    getStringValue(barrio),
-			Direccion: getStringValue(direccion),
-			Longitud:  getFloatValue(longitud),
-			Latitud:   getFloatValue(latitud),
-		}, nil
-	}
-
-	return nil, fmt.Errorf("centro not found in Neo4j with id: %s", idNeo)
-}
-
-// Funciones auxiliares para manejo seguro de valores
-func getStringValue(value interface{}) string {
-	if value == nil {
-		return ""
-	}
-	if str, ok := value.(string); ok {
-		return str
-	}
-	return fmt.Sprintf("%v", value)
-}
-
-func getFloatValue(value interface{}) float64 {
-	if value == nil {
-		return 0.0
-	}
-	if f, ok := value.(float64); ok {
-		return f
-	}
-	if i, ok := value.(int64); ok {
-		return float64(i)
-	}
-	return 0.0
-}
+// DEPRECATED: Las funciones de Neo4j ya no se usan para centros
+// Los centros ahora se obtienen desde MongoDB (colección depot)
