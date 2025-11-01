@@ -138,31 +138,30 @@ definitions:
     type: object
   services.CreateTachoRequest:
     properties:
-      barrio:
-        description: Datos para Neo4j
-        type: string
       capacidad:
         type: number
-      direccion:
-        type: string
+      id:
+        description: Datos para MongoDB (id, lat, lon, neighborhood)
+        type: integer
       id_estado:
         type: integer
       id_tipo:
         description: Datos para MySQL
         type: integer
-      latitude:
+      lat:
         type: number
-      longitude:
+      lon:
         type: number
-      prioridad:
+      neighborhood:
+        description: Número de barrio
         type: integer
     type: object
   services.CreateTachoResponse:
     properties:
       message:
         type: string
-      neo_node_id:
-        type: string
+      mongo_id:
+        type: integer
       tacho_id:
         type: integer
     type: object
@@ -191,12 +190,8 @@ definitions:
     type: object
   services.TachoCompleto:
     properties:
-      barrio:
-        type: string
       capacidad:
         type: number
-      direccion:
-        type: string
       estado:
         type: string
       id_tacho:
@@ -205,6 +200,8 @@ definitions:
         type: number
       longitud:
         type: number
+      neighborhood:
+        type: integer
     type: object
 info:
   contact:
@@ -699,21 +696,14 @@ paths:
     delete:
       consumes:
       - application/json
-      description: Elimina un tacho tanto de MySQL como de Neo4j usando query parameters
-        (custom_id O direccion+barrio)
+      description: Elimina un tacho tanto de MySQL como de MongoDB usando el ID de
+        MongoDB
       parameters:
-      - description: ID personalizado del tacho (direccion|barrio)
+      - description: ID del tacho en MongoDB
         in: query
-        name: custom_id
-        type: string
-      - description: Dirección del tacho (requiere también barrio)
-        in: query
-        name: direccion
-        type: string
-      - description: Barrio del tacho (requerido si se pasa direccion)
-        in: query
-        name: barrio
-        type: string
+        name: id
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
@@ -747,7 +737,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Devuelve todos los tachos con barrio, dirección, latitud, longitud,
+      description: Devuelve todos los tachos con neighborhood, latitud, longitud,
         estado y capacidad
       produces:
       - application/json

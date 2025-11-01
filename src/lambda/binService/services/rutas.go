@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 type Point struct {
@@ -25,19 +23,18 @@ type CreateTachoRequest struct {
 	IdEstado  int     `json:"id_estado"`
 	Capacidad float64 `json:"capacidad"`
 
-	// Datos para Neo4j
-	Barrio    string  `json:"barrio"`
-	Direccion string  `json:"direccion"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Prioridad int     `json:"prioridad"`
+	// Datos para MongoDB (id, lat, lon, neighborhood)
+	MongoID      int     `json:"id"`           // ID que se guardará en MongoDB
+	Neighborhood int     `json:"neighborhood"` // Número de barrio
+	Latitude     float64 `json:"lat"`
+	Longitude    float64 `json:"lon"`
 }
 
 // CreateTachoResponse representa la respuesta al crear un tacho
 type CreateTachoResponse struct {
-	Message   string `json:"message"`
-	TachoID   int    `json:"tacho_id"`
-	NeoNodeID string `json:"neo_node_id"`
+	Message string `json:"message"`
+	TachoID int    `json:"tacho_id"`
+	MongoID int    `json:"mongo_id"`
 }
 
 // Haversine calculates the distance between two coordinates
@@ -55,76 +52,47 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	return R * c
 }
 
-// GetDistances gets the 'tachos' in an 'zona' and sorts them by distance
+// GetDistances gets the 'tachos' in a neighborhood (barrio) and sorts them by distance
+// DEPRECATED: Esta función usa Neo4j para tachos, que ahora están en MongoDB
+// Considerar reescribir para usar MongoDB directamente
 func GetDistances(zonaID int) ([]Point, error) {
-	driver, err := config.ConnectNeo()
-	if err != nil {
-		return nil, fmt.Errorf("no se pudo conectar a Neo4j: %v", err)
-	}
-	defer driver.Close(context.Background())
-
-	session := driver.NewSession(context.Background(), neo4j.SessionConfig{
-		DatabaseName: os.Getenv("NEO4J_DATABASE"),
-	})
-	defer session.Close(context.Background())
-
-	// Mapping zonaID -> barrio
-	zonaToBarrio := map[int]string{
-		1: "CHACARITA",
-		2: "MONTE CASTRO",
-		3: "BOEDO",
-		4: "VILLA CRESPO",
+	// Mapping zonaID -> neighborhood
+	zonaToNeighborhood := map[int]int{
+		1: 1, // CHACARITA
+		2: 2, // MONTE CASTRO
+		3: 3, // BOEDO
+		4: 4, // VILLA CRESPO
 	}
 
-	barrio, ok := zonaToBarrio[zonaID]
+	neighborhood, ok := zonaToNeighborhood[zonaID]
 	if !ok {
 		return nil, fmt.Errorf("zonaID desconocido")
 	}
 
-	// Query to fetch Neo4j nodes by barrio
-	query := `
-	MATCH (t:Tacho)
-	WHERE t.barrio = $barrio
-	RETURN t.id AS id, t.location.latitude AS lat, t.location.longitude AS lng
-	`
+	// Obtener tachos desde MongoDB
+	binsMap, err := GetAllTachosFromMongoDB()
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo tachos desde MongoDB: %v", err)
+	}
 
-	result, err := session.ExecuteRead(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
-		records, err := tx.Run(context.Background(), query, map[string]any{
-			"barrio": barrio,
-		})
-		if err != nil {
-			return nil, err
-		}
+	points := []Point{}
+	idCounter := 1
 
-		points := []Point{}
-		idCounter := 1
-
-		for records.Next(context.Background()) {
-			rec := records.Record()
-			latVal, _ := rec.Get("lat")
-			lngVal, _ := rec.Get("lng")
-
-			lat, ok1 := latVal.(float64)
-			lng, ok2 := lngVal.(float64)
-			if !ok1 || !ok2 {
-				continue
-			}
-
+	// Filtrar por neighborhood y convertir a Points
+	for _, bin := range binsMap {
+		if bin.Neighborhood == neighborhood {
 			points = append(points, Point{
 				ID:  idCounter,
-				Lat: lat,
-				Lng: lng,
+				Lat: bin.Lat,
+				Lng: bin.Lon,
 			})
 			idCounter++
 		}
-
-		return points, records.Err()
-	})
-	if err != nil {
-		return nil, err
 	}
 
-	points := result.([]Point)
+	if len(points) == 0 {
+		return nil, fmt.Errorf("no se encontraron tachos en el barrio %d", neighborhood)
+	}
 
 	// Order by distance from the first using sort.Slice
 	if len(points) > 1 {
@@ -179,46 +147,43 @@ func GetPersonaByKey(personaKey string) (map[string]interface{}, error) {
 	return persona, nil
 }
 
-// CreateTacho crea un tacho en MySQL y Neo4j
+// CreateTacho crea un tacho en MySQL y MongoDB
 func CreateTacho(request CreateTachoRequest) (*CreateTachoResponse, error) {
-	// Generar el ID personalizado (direccion|barrio)
-	customID := fmt.Sprintf("%s|%s", request.Direccion, request.Barrio)
-
-	// Primero crear en Neo4j para obtener el ID del nodo
-	neoNodeID, err := createTachoInNeo4j(request)
+	// Primero crear en MongoDB
+	err := createTachoInMongoDB(request)
 	if err != nil {
-		return nil, fmt.Errorf("error creando tacho en Neo4j: %v", err)
+		return nil, fmt.Errorf("error creando tacho en MongoDB: %v", err)
 	}
 
-	// Luego crear en MySQL usando el ID personalizado en lugar del ID interno de Neo4j
-	tachoID, err := createTachoInMySQL(request, customID)
+	// Luego crear en MySQL usando el MongoID
+	tachoID, err := createTachoInMySQL(request, request.MongoID)
 	if err != nil {
-		// Si falla MySQL, intentar limpiar Neo4j (rollback)
-		// TODO: Implementar rollback en Neo4j si es necesario
+		// Si falla MySQL, intentar limpiar MongoDB (rollback)
+		// TODO: Implementar rollback en MongoDB si es necesario
 		return nil, fmt.Errorf("error creando tacho en MySQL: %v", err)
 	}
 
 	return &CreateTachoResponse{
-		Message:   "Tacho creado exitosamente",
-		TachoID:   tachoID,
-		NeoNodeID: neoNodeID,
+		Message: "Tacho creado exitosamente",
+		TachoID: tachoID,
+		MongoID: request.MongoID,
 	}, nil
 }
 
-// DeleteTacho elimina un tacho de MySQL y Neo4j usando el ID personalizado
-func DeleteTacho(customID string) error {
+// DeleteTacho elimina un tacho de MySQL y MongoDB usando el ID de MongoDB
+func DeleteTacho(mongoID int) error {
 	var errorsFound []string
 
 	// Intentar eliminar de MySQL
-	err := deleteTachoFromMySQL(0, customID)
+	err := deleteTachoFromMySQL(0, mongoID)
 	if err != nil {
 		errorsFound = append(errorsFound, fmt.Sprintf("MySQL: %v", err))
 	}
 
-	// Intentar eliminar de Neo4j (siempre, sin importar si falló MySQL)
-	err = deleteTachoFromNeo4j("", customID)
+	// Intentar eliminar de MongoDB
+	err = deleteTachoFromMongoDB(mongoID)
 	if err != nil {
-		errorsFound = append(errorsFound, fmt.Sprintf("Neo4j: %v", err))
+		errorsFound = append(errorsFound, fmt.Sprintf("MongoDB: %v", err))
 	}
 
 	// Si ambos fallaron, retornar error

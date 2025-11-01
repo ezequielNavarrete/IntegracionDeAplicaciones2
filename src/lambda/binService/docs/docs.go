@@ -732,7 +732,7 @@ const docTemplate = `{
         },
         "/tachos": {
             "get": {
-                "description": "Devuelve todos los tachos con barrio, dirección, latitud, longitud, estado y capacidad",
+                "description": "Devuelve todos los tachos con neighborhood, latitud, longitud, estado y capacidad",
                 "consumes": [
                     "application/json"
                 ],
@@ -815,7 +815,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Elimina un tacho tanto de MySQL como de Neo4j usando query parameters (custom_id O direccion+barrio)",
+                "description": "Elimina un tacho tanto de MySQL como de MongoDB usando el ID de MongoDB",
                 "consumes": [
                     "application/json"
                 ],
@@ -828,22 +828,11 @@ const docTemplate = `{
                 "summary": "Eliminar un tacho",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "ID personalizado del tacho (direccion|barrio)",
-                        "name": "custom_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Dirección del tacho (requiere también barrio)",
-                        "name": "direccion",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Barrio del tacho (requerido si se pasa direccion)",
-                        "name": "barrio",
-                        "in": "query"
+                        "type": "integer",
+                        "description": "ID del tacho en MongoDB",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1328,15 +1317,12 @@ const docTemplate = `{
         "services.CreateTachoRequest": {
             "type": "object",
             "properties": {
-                "barrio": {
-                    "description": "Datos para Neo4j",
-                    "type": "string"
-                },
                 "capacidad": {
                     "type": "number"
                 },
-                "direccion": {
-                    "type": "string"
+                "id": {
+                    "description": "Datos para MongoDB (id, lat, lon, neighborhood)",
+                    "type": "integer"
                 },
                 "id_estado": {
                     "type": "integer"
@@ -1345,13 +1331,14 @@ const docTemplate = `{
                     "description": "Datos para MySQL",
                     "type": "integer"
                 },
-                "latitude": {
+                "lat": {
                     "type": "number"
                 },
-                "longitude": {
+                "lon": {
                     "type": "number"
                 },
-                "prioridad": {
+                "neighborhood": {
+                    "description": "Número de barrio",
                     "type": "integer"
                 }
             }
@@ -1362,8 +1349,8 @@ const docTemplate = `{
                 "message": {
                     "type": "string"
                 },
-                "neo_node_id": {
-                    "type": "string"
+                "mongo_id": {
+                    "type": "integer"
                 },
                 "tacho_id": {
                     "type": "integer"
@@ -1407,14 +1394,8 @@ const docTemplate = `{
         "services.TachoCompleto": {
             "type": "object",
             "properties": {
-                "barrio": {
-                    "type": "string"
-                },
                 "capacidad": {
                     "type": "number"
-                },
-                "direccion": {
-                    "type": "string"
                 },
                 "estado": {
                     "type": "string"
@@ -1427,6 +1408,9 @@ const docTemplate = `{
                 },
                 "longitud": {
                     "type": "number"
+                },
+                "neighborhood": {
+                    "type": "integer"
                 }
             }
         }
