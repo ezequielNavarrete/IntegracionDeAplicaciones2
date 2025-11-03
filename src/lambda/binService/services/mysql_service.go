@@ -140,98 +140,94 @@ type TachoCompleto struct {
 	Caracteristicas []CaracteristicaTacho  `json:"caracteristicas"`
 }
 
-// getCaracteristicasByTachoID obtiene todas las características de un tacho específico
-func getCaracteristicasByTachoID(tachoID int) ([]CaracteristicaTacho, error) {
-	if config.DB == nil {
-		return nil, fmt.Errorf("database connection not available")
-	}
-
-	query := `
-		SELECT 
-			c.nombre,
-			ec.nombre as estado,
-			ec.prioridad
-		FROM Caracteristica_tacho ct
-		INNER JOIN Caracteristica c ON ct.id_caracteristica = c.id_caracteristica
-		INNER JOIN Estado_caracteristica ec ON ct.id_estado_caracteristica = ec.id_estado_caracteristica
-		WHERE ct.id_tacho = ?
-		ORDER BY ec.prioridad DESC
-	`
-
-	var caracteristicas []CaracteristicaTacho
-	result := config.DB.Raw(query, tachoID).Scan(&caracteristicas)
-	if result.Error() != nil {
-		return nil, fmt.Errorf("error getting caracteristicas: %v", result.Error())
-	}
-
-	return caracteristicas, nil
-}
-
 // GetAllTachos obtiene todos los tachos con información completa
 func GetAllTachos() ([]TachoCompleto, error) {
 	if config.DB == nil {
 		return nil, fmt.Errorf("database connection not available")
 	}
 
-	var tachos []TachoCompleto
-
-	// Query base para obtener tachos desde MySQL
+	// Query optimizada que obtiene TODO en una sola consulta
 	query := `
 		SELECT 
 			t.id_tacho,
 			t.id_mongo,
 			COALESCE(et.tipo_estado, 'activo') as estado,
-			t.capacidad
+			t.capacidad,
+			ct.nombre as caracteristica_nombre,
+			ec.nombre as caracteristica_estado,
+			ec.prioridad as caracteristica_prioridad
 		FROM Tacho t
 		LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
+		LEFT JOIN Lista_caracteristica_tacho lct ON t.id_tacho = lct.id_tacho
+		LEFT JOIN Caracteristica_tacho ct ON lct.id_caracteristica = ct.id_caracteristica
+		LEFT JOIN Estado_caracteristica ec ON ct.id_estado_caracteristica = ec.id_estado_caracteristica
+		ORDER BY t.id_tacho, ec.prioridad DESC
 	`
 
-	// Estructura temporal para obtener los datos de MySQL
-	type TachoTemp struct {
-		IDTacho   int     `gorm:"column:id_tacho"`
-		IDMongo   int     `gorm:"column:id_mongo"`
-		Estado    string  `gorm:"column:estado"`
-		Capacidad float64 `gorm:"column:capacidad"`
+	// Estructura temporal para leer los resultados con características
+	type TachoCaracteristicaRow struct {
+		IDTacho                 int     `gorm:"column:id_tacho"`
+		IDMongo                 int     `gorm:"column:id_mongo"`
+		Estado                  string  `gorm:"column:estado"`
+		Capacidad               float64 `gorm:"column:capacidad"`
+		CaracteristicaNombre    *string `gorm:"column:caracteristica_nombre"`
+		CaracteristicaEstado    *string `gorm:"column:caracteristica_estado"`
+		CaracteristicaPrioridad *int    `gorm:"column:caracteristica_prioridad"`
 	}
 
-	var tachosTemp []TachoTemp
-	result := config.DB.Raw(query).Scan(&tachosTemp)
+	var rows []TachoCaracteristicaRow
+	result := config.DB.Raw(query).Scan(&rows)
 	if result.Error() != nil {
 		return nil, fmt.Errorf("error getting tachos: %v", result.Error())
 	}
 
-	// Obtener coordenadas y neighborhood desde MongoDB
+	// Obtener coordenadas desde MongoDB una sola vez
 	coordsMap, err := GetAllTachosFromMongoDB()
 	if err != nil {
 		return nil, fmt.Errorf("error getting coordinates from MongoDB: %v", err)
 	}
 
-	// Combinar los datos
-	for _, tachoTemp := range tachosTemp {
-		tacho := TachoCompleto{
-			IDTacho:         tachoTemp.IDTacho,
-			Estado:          tachoTemp.Estado,
-			Capacidad:       tachoTemp.Capacidad,
-			Neighborhood:    0, // Default en caso de no encontrar
-			Latitud:         0, // Default en caso de no encontrar
-			Longitud:        0, // Default en caso de no encontrar
-			Caracteristicas: []CaracteristicaTacho{}, // Inicializar vacío
+	// Agrupar características por tacho
+	tachosMap := make(map[int]*TachoCompleto)
+	
+	for _, row := range rows {
+		// Si el tacho no existe en el map, crearlo
+		if _, exists := tachosMap[row.IDTacho]; !exists {
+			tacho := &TachoCompleto{
+				IDTacho:         row.IDTacho,
+				Estado:          row.Estado,
+				Capacidad:       row.Capacidad,
+				Neighborhood:    0,
+				Latitud:         0,
+				Longitud:        0,
+				Caracteristicas: []CaracteristicaTacho{},
+			}
+
+			// Buscar coordenadas en MongoDB
+			if mongoData, found := coordsMap[row.IDMongo]; found {
+				tacho.Latitud = mongoData.Lat
+				tacho.Longitud = mongoData.Lon
+				tacho.Neighborhood = mongoData.Neighborhood
+			}
+
+			tachosMap[row.IDTacho] = tacho
 		}
 
-		// Buscar las coordenadas en el map de MongoDB
-		if mongoData, found := coordsMap[tachoTemp.IDMongo]; found {
-			tacho.Latitud = mongoData.Lat
-			tacho.Longitud = mongoData.Lon
-			tacho.Neighborhood = mongoData.Neighborhood
+		// Agregar característica si existe
+		if row.CaracteristicaNombre != nil && row.CaracteristicaEstado != nil && row.CaracteristicaPrioridad != nil {
+			caracteristica := CaracteristicaTacho{
+				Nombre:    *row.CaracteristicaNombre,
+				Estado:    *row.CaracteristicaEstado,
+				Prioridad: *row.CaracteristicaPrioridad,
+			}
+			tachosMap[row.IDTacho].Caracteristicas = append(tachosMap[row.IDTacho].Caracteristicas, caracteristica)
 		}
+	}
 
-		// Obtener las características del tacho
-		caracteristicas, err := getCaracteristicasByTachoID(tachoTemp.IDTacho)
-		if err == nil && len(caracteristicas) > 0 {
-			tacho.Caracteristicas = caracteristicas
-		}
-
-		tachos = append(tachos, tacho)
+	// Convertir el map a slice
+	tachos := make([]TachoCompleto, 0, len(tachosMap))
+	for _, tacho := range tachosMap {
+		tachos = append(tachos, *tacho)
 	}
 
 	return tachos, nil
