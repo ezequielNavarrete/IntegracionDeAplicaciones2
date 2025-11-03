@@ -993,6 +993,252 @@ const docTemplate = `{
                 }
             }
         },
+        "/v2/ruta-navegacion-by-header": {
+            "get": {
+                "description": "Devuelve el punto actual y siguiente de la ruta asignada al conductor",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas v2"
+                ],
+                "summary": "Obtener navegación punto a punto usando email del conductor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email del conductor",
+                        "name": "X-User-Email",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Índice del punto actual (0 = inicio)",
+                        "name": "index",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Información de navegación",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RouteNavigationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Parámetros inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario o ruta no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/ruta-navegacion-by-header/start": {
+            "get": {
+                "description": "Obtiene el primer punto de la ruta asignada al conductor",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas v2"
+                ],
+                "summary": "Iniciar navegación usando email del conductor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email del conductor",
+                        "name": "X-User-Email",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Punto inicial",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RouteNavigationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Header faltante",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario o ruta no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/ruta-navegacion/{neighborhood}/{route}": {
+            "get": {
+                "description": "Devuelve el punto actual y el siguiente punto en la ruta. Útil para navegación secuencial",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas v2"
+                ],
+                "summary": "Obtener navegación punto a punto de una ruta",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del barrio",
+                        "name": "neighborhood",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de ruta",
+                        "name": "route",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Índice del punto actual (0 = inicio)",
+                        "name": "index",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Información de navegación",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RouteNavigationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Parámetros inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ruta no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/ruta-navegacion/{neighborhood}/{route}/start": {
+            "get": {
+                "description": "Obtiene el primer punto (depot) de la ruta para comenzar la navegación",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas v2"
+                ],
+                "summary": "Iniciar navegación de ruta",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del barrio",
+                        "name": "neighborhood",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de ruta",
+                        "name": "route",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Punto inicial",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RouteNavigationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Parámetros inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ruta no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v2/ruta-optima": {
             "get": {
                 "security": [
@@ -1163,6 +1409,43 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.RouteNavigationResponse": {
+            "type": "object",
+            "properties": {
+                "current_index": {
+                    "type": "integer"
+                },
+                "current_point": {
+                    "$ref": "#/definitions/services.Coordinate"
+                },
+                "is_first_point": {
+                    "type": "boolean"
+                },
+                "is_last_point": {
+                    "type": "boolean"
+                },
+                "next_point": {
+                    "$ref": "#/definitions/services.Coordinate"
+                },
+                "next_point_key": {
+                    "description": "Clave para obtener el siguiente punto",
+                    "type": "string"
+                },
+                "previous_point_key": {
+                    "description": "Clave para volver al anterior",
+                    "type": "string"
+                },
+                "progress_percentage": {
+                    "type": "number"
+                },
+                "route_id": {
+                    "type": "string"
+                },
+                "total_points": {
+                    "type": "integer"
+                }
+            }
+        },
         "handlers.UpdateCapacidadRequest": {
             "type": "object",
             "properties": {
@@ -1218,8 +1501,20 @@ const docTemplate = `{
         "services.Camion": {
             "type": "object",
             "properties": {
+                "capacidad": {
+                    "type": "integer"
+                },
                 "id_camion": {
                     "type": "integer"
+                },
+                "marca": {
+                    "type": "string"
+                },
+                "matricula": {
+                    "type": "string"
+                },
+                "modelo": {
+                    "type": "string"
                 },
                 "nombre_tipo": {
                     "type": "string"
@@ -1251,20 +1546,28 @@ const docTemplate = `{
                 }
             }
         },
+        "services.CaracteristicaTacho": {
+            "type": "object",
+            "properties": {
+                "estado": {
+                    "type": "string"
+                },
+                "nombre": {
+                    "type": "string"
+                },
+                "prioridad": {
+                    "type": "integer"
+                }
+            }
+        },
         "services.Centro": {
             "type": "object",
             "properties": {
-                "barrio": {
-                    "type": "string"
-                },
-                "direccion": {
-                    "type": "string"
-                },
                 "id_centro": {
                     "type": "integer"
                 },
-                "id_neo": {
-                    "type": "string"
+                "id_mongo": {
+                    "type": "integer"
                 },
                 "latitud": {
                     "type": "number"
@@ -1272,9 +1575,8 @@ const docTemplate = `{
                 "longitud": {
                     "type": "number"
                 },
-                "nombre": {
-                    "description": "Información adicional de Neo4j",
-                    "type": "string"
+                "neighborhood": {
+                    "type": "integer"
                 },
                 "nombre_tipo": {
                     "type": "string"
@@ -1396,6 +1698,12 @@ const docTemplate = `{
             "properties": {
                 "capacidad": {
                     "type": "number"
+                },
+                "caracteristicas": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.CaracteristicaTacho"
+                    }
                 },
                 "estado": {
                     "type": "string"

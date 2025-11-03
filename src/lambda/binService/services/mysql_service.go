@@ -122,14 +122,49 @@ type TachoMySQL struct {
 	Capacidad float64 `json:"capacidad" gorm:"column:capacidad"`
 }
 
+// CaracteristicaTacho representa una característica asociada a un tacho
+type CaracteristicaTacho struct {
+	Nombre    string `json:"nombre"`
+	Estado    string `json:"estado"`
+	Prioridad int    `json:"prioridad"`
+}
+
 // TachoCompleto representa un tacho con toda la información necesaria
 type TachoCompleto struct {
-	IDTacho      int     `json:"id_tacho" gorm:"column:id_tacho"`
-	Neighborhood int     `json:"neighborhood" gorm:"column:neighborhood"`
-	Latitud      float64 `json:"latitud" gorm:"column:latitud"`
-	Longitud     float64 `json:"longitud" gorm:"column:longitud"`
-	Estado       string  `json:"estado" gorm:"column:estado"`
-	Capacidad    float64 `json:"capacidad" gorm:"column:capacidad"`
+	IDTacho         int                    `json:"id_tacho" gorm:"column:id_tacho"`
+	Neighborhood    int                    `json:"neighborhood" gorm:"column:neighborhood"`
+	Latitud         float64                `json:"latitud" gorm:"column:latitud"`
+	Longitud        float64                `json:"longitud" gorm:"column:longitud"`
+	Estado          string                 `json:"estado" gorm:"column:estado"`
+	Capacidad       float64                `json:"capacidad" gorm:"column:capacidad"`
+	Caracteristicas []CaracteristicaTacho  `json:"caracteristicas"`
+}
+
+// getCaracteristicasByTachoID obtiene todas las características de un tacho específico
+func getCaracteristicasByTachoID(tachoID int) ([]CaracteristicaTacho, error) {
+	if config.DB == nil {
+		return nil, fmt.Errorf("database connection not available")
+	}
+
+	query := `
+		SELECT 
+			c.nombre,
+			ec.nombre as estado,
+			ec.prioridad
+		FROM Caracteristica_tacho ct
+		INNER JOIN Caracteristica c ON ct.id_caracteristica = c.id_caracteristica
+		INNER JOIN Estado_caracteristica ec ON ct.id_estado_caracteristica = ec.id_estado_caracteristica
+		WHERE ct.id_tacho = ?
+		ORDER BY ec.prioridad DESC
+	`
+
+	var caracteristicas []CaracteristicaTacho
+	result := config.DB.Raw(query, tachoID).Scan(&caracteristicas)
+	if result.Error() != nil {
+		return nil, fmt.Errorf("error getting caracteristicas: %v", result.Error())
+	}
+
+	return caracteristicas, nil
 }
 
 // GetAllTachos obtiene todos los tachos con información completa
@@ -174,12 +209,13 @@ func GetAllTachos() ([]TachoCompleto, error) {
 	// Combinar los datos
 	for _, tachoTemp := range tachosTemp {
 		tacho := TachoCompleto{
-			IDTacho:      tachoTemp.IDTacho,
-			Estado:       tachoTemp.Estado,
-			Capacidad:    tachoTemp.Capacidad,
-			Neighborhood: 0, // Default en caso de no encontrar
-			Latitud:      0, // Default en caso de no encontrar
-			Longitud:     0, // Default en caso de no encontrar
+			IDTacho:         tachoTemp.IDTacho,
+			Estado:          tachoTemp.Estado,
+			Capacidad:       tachoTemp.Capacidad,
+			Neighborhood:    0, // Default en caso de no encontrar
+			Latitud:         0, // Default en caso de no encontrar
+			Longitud:        0, // Default en caso de no encontrar
+			Caracteristicas: []CaracteristicaTacho{}, // Inicializar vacío
 		}
 
 		// Buscar las coordenadas en el map de MongoDB
@@ -187,6 +223,12 @@ func GetAllTachos() ([]TachoCompleto, error) {
 			tacho.Latitud = mongoData.Lat
 			tacho.Longitud = mongoData.Lon
 			tacho.Neighborhood = mongoData.Neighborhood
+		}
+
+		// Obtener las características del tacho
+		caracteristicas, err := getCaracteristicasByTachoID(tachoTemp.IDTacho)
+		if err == nil && len(caracteristicas) > 0 {
+			tacho.Caracteristicas = caracteristicas
 		}
 
 		tachos = append(tachos, tacho)

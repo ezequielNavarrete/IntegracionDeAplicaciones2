@@ -37,6 +37,31 @@ definitions:
         example: incendio
         type: string
     type: object
+  handlers.RouteNavigationResponse:
+    properties:
+      current_index:
+        type: integer
+      current_point:
+        $ref: '#/definitions/services.Coordinate'
+      is_first_point:
+        type: boolean
+      is_last_point:
+        type: boolean
+      next_point:
+        $ref: '#/definitions/services.Coordinate'
+      next_point_key:
+        description: Clave para obtener el siguiente punto
+        type: string
+      previous_point_key:
+        description: Clave para volver al anterior
+        type: string
+      progress_percentage:
+        type: number
+      route_id:
+        type: string
+      total_points:
+        type: integer
+    type: object
   handlers.UpdateCapacidadRequest:
     properties:
       capacidad:
@@ -74,8 +99,16 @@ definitions:
     type: object
   services.Camion:
     properties:
+      capacidad:
+        type: integer
       id_camion:
         type: integer
+      marca:
+        type: string
+      matricula:
+        type: string
+      modelo:
+        type: string
       nombre_tipo:
         type: string
       tipo_estado:
@@ -95,23 +128,27 @@ definitions:
       total:
         type: integer
     type: object
+  services.CaracteristicaTacho:
+    properties:
+      estado:
+        type: string
+      nombre:
+        type: string
+      prioridad:
+        type: integer
+    type: object
   services.Centro:
     properties:
-      barrio:
-        type: string
-      direccion:
-        type: string
       id_centro:
         type: integer
-      id_neo:
-        type: string
+      id_mongo:
+        type: integer
       latitud:
         type: number
       longitud:
         type: number
-      nombre:
-        description: Información adicional de Neo4j
-        type: string
+      neighborhood:
+        type: integer
       nombre_tipo:
         type: string
     type: object
@@ -192,6 +229,10 @@ definitions:
     properties:
       capacidad:
         type: number
+      caracteristicas:
+        items:
+          $ref: '#/definitions/services.CaracteristicaTacho'
+        type: array
       estado:
         type: string
       id_tacho:
@@ -868,6 +909,171 @@ paths:
       summary: Actualizar capacidad del tacho
       tags:
       - Tachos
+  /v2/ruta-navegacion-by-header:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve el punto actual y siguiente de la ruta asignada al conductor
+      parameters:
+      - description: Email del conductor
+        in: header
+        name: X-User-Email
+        required: true
+        type: string
+      - default: 0
+        description: Índice del punto actual (0 = inicio)
+        in: query
+        name: index
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Información de navegación
+          schema:
+            $ref: '#/definitions/handlers.RouteNavigationResponse'
+        "400":
+          description: Parámetros inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Usuario o ruta no encontrada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener navegación punto a punto usando email del conductor
+      tags:
+      - Rutas v2
+  /v2/ruta-navegacion-by-header/start:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene el primer punto de la ruta asignada al conductor
+      parameters:
+      - description: Email del conductor
+        in: header
+        name: X-User-Email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Punto inicial
+          schema:
+            $ref: '#/definitions/handlers.RouteNavigationResponse'
+        "400":
+          description: Header faltante
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Usuario o ruta no encontrada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar navegación usando email del conductor
+      tags:
+      - Rutas v2
+  /v2/ruta-navegacion/{neighborhood}/{route}:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve el punto actual y el siguiente punto en la ruta. Útil
+        para navegación secuencial
+      parameters:
+      - description: ID del barrio
+        in: path
+        name: neighborhood
+        required: true
+        type: integer
+      - description: Número de ruta
+        in: path
+        name: route
+        required: true
+        type: integer
+      - default: 0
+        description: Índice del punto actual (0 = inicio)
+        in: query
+        name: index
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Información de navegación
+          schema:
+            $ref: '#/definitions/handlers.RouteNavigationResponse'
+        "400":
+          description: Parámetros inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Ruta no encontrada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener navegación punto a punto de una ruta
+      tags:
+      - Rutas v2
+  /v2/ruta-navegacion/{neighborhood}/{route}/start:
+    get:
+      consumes:
+      - application/json
+      description: Obtiene el primer punto (depot) de la ruta para comenzar la navegación
+      parameters:
+      - description: ID del barrio
+        in: path
+        name: neighborhood
+        required: true
+        type: integer
+      - description: Número de ruta
+        in: path
+        name: route
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Punto inicial
+          schema:
+            $ref: '#/definitions/handlers.RouteNavigationResponse'
+        "400":
+          description: Parámetros inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Ruta no encontrada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Iniciar navegación de ruta
+      tags:
+      - Rutas v2
   /v2/ruta-optima:
     get:
       consumes:
