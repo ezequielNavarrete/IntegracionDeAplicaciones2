@@ -9,6 +9,10 @@ import (
 // Estructura para representar un camión con información completa
 type Camion struct {
 	IDCamion   int    `json:"id_camion" gorm:"column:id_camion"`
+	Capacidad  int    `json:"capacidad" gorm:"column:capacidad"`
+	Modelo     string `json:"modelo" gorm:"column:modelo"`
+	Marca      string `json:"marca" gorm:"column:marca"`
+	Matricula  string `json:"matricula" gorm:"column:matricula"`
 	NombreTipo string `json:"nombre_tipo" gorm:"column:nombre_tipo"`
 	TipoEstado string `json:"tipo_estado" gorm:"column:tipo_estado"`
 }
@@ -36,6 +40,10 @@ func GetAllCamiones() (*CamionesResponse, error) {
 	query := `
 		SELECT 
 			c.id_camion,
+			c.capacidad,
+			c.modelo,
+			c.marca,
+			c.matricula,
 			c.id_tipo,
 			tc.nombre_tipo,
 			c.id_estado,
@@ -69,6 +77,10 @@ func GetCamionByID(camionID int) (*CamionResponse, error) {
 	query := `
 		SELECT 
 			c.id_camion,
+			c.capacidad,
+			c.modelo,
+			c.marca,
+			c.matricula,
 			c.id_tipo,
 			tc.nombre_tipo,
 			c.id_estado,
