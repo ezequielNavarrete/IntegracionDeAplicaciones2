@@ -106,7 +106,7 @@ definitions:
       marca:
         type: string
       matricula:
-        type: string
+        type: integer
       modelo:
         type: string
       nombre_tipo:
@@ -173,6 +173,69 @@ definitions:
       lon:
         type: number
     type: object
+  services.CreateCamionMySQLRequest:
+    properties:
+      capacidad:
+        minimum: 1
+        type: integer
+      id_estado:
+        description: 1 Operativo, 2 En uso, 3 En mantenimiento, 4 Fuera de servicio
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        minimum: 1
+        type: integer
+      id_tipo:
+        description: 1 Basura, 2 Reciclaje, 3 Limpieza, 4 Especial
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        minimum: 1
+        type: integer
+      marca:
+        minLength: 2
+        type: string
+      matricula:
+        minimum: 1
+        type: integer
+      modelo:
+        minLength: 2
+        type: string
+    required:
+    - capacidad
+    - id_estado
+    - id_tipo
+    - marca
+    - matricula
+    - modelo
+    type: object
+  services.CreatePersonaRequest:
+    properties:
+      email:
+        type: string
+      neighborhood_id:
+        minimum: 1
+        type: integer
+      nombre:
+        minLength: 2
+        type: string
+      route_number:
+        minimum: 1
+        type: integer
+      truck_id:
+        minimum: 1
+        type: integer
+    required:
+    - email
+    - neighborhood_id
+    - nombre
+    - route_number
+    - truck_id
+    type: object
   services.CreateTachoRequest:
     properties:
       capacidad:
@@ -210,6 +273,21 @@ definitions:
         items:
           type: integer
         type: array
+    type: object
+  services.Persona:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      neighborhood_id:
+        type: integer
+      nombre:
+        type: string
+      route_number:
+        type: integer
+      truck_id:
+        type: integer
     type: object
   services.SimplifiedRoute:
     properties:
@@ -286,7 +364,82 @@ paths:
       summary: Obtener todos los camiones
       tags:
       - Camiones
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Inserta un camión en MySQL y devuelve el registro enriquecido (tipo y estado por JOIN).
+        Referencia de catálogos para id_tipo e id_estado.
+        id_tipo: 1=Basura, 2=Reciclaje, 3=Limpieza, 4=Especial.
+        id_estado: 1=Operativo, 2=En uso, 3=En mantenimiento, 4=Fuera de servicio.
+      parameters:
+      - description: Datos del camión a crear
+        in: body
+        name: camion
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateCamionMySQLRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Camión creado
+          schema:
+            $ref: '#/definitions/services.Camion'
+        "400":
+          description: Datos inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Crear camión
+      tags:
+      - Camiones
   /camiones/{id}:
+    delete:
+      description: Elimina el registro de la tabla Camiones por ID
+      parameters:
+      - description: ID del camión
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Camión eliminado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: ID inválido
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Camión no encontrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar camión
+      tags:
+      - Camiones
     get:
       description: Obtiene la información completa de un camión específico mediante
         su ID, incluyendo tipo y estado
@@ -468,7 +621,87 @@ paths:
       summary: Obtener todas las personas
       tags:
       - Personas
+    post:
+      consumes:
+      - application/json
+      description: Crea una persona asociada a una ruta y camión, y registra el mapeo
+        email->userID
+      parameters:
+      - description: Datos de la persona
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreatePersonaRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Persona creada
+          schema:
+            $ref: '#/definitions/services.Persona'
+        "400":
+          description: Solicitud inválida
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Email ya existe
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Crear persona
+      tags:
+      - Personas
   /personas/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina una persona por su ID (hash, lista y mapeo de email)
+      parameters:
+      - description: ID de la persona
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Persona eliminada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: ID inválido
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Persona no encontrada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar persona
+      tags:
+      - Personas
     get:
       consumes:
       - application/json

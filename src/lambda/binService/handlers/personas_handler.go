@@ -7,6 +7,7 @@ import (
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -197,4 +198,80 @@ func GetPersonasByNeighborhood(c *gin.Context) {
 		"total":        len(result),
 		"personas":     result,
 	})
+}
+
+// =====================
+// Crear y eliminar personas
+// =====================
+
+// CreatePersonaHandler crea una persona en Redis
+// @Summary Crear persona
+// @Description Crea una persona asociada a una ruta y camión, y registra el mapeo email->userID
+// @Tags Personas
+// @Accept json
+// @Produce json
+// @Param data body services.CreatePersonaRequest true "Datos de la persona"
+// @Success 201 {object} services.Persona "Persona creada"
+// @Failure 400 {object} map[string]string "Solicitud inválida"
+// @Failure 409 {object} map[string]string "Email ya existe"
+// @Failure 500 {object} map[string]string "Error interno del servidor"
+// @Router /personas [post]
+func CreatePersonaHandler(c *gin.Context) {
+	var req services.CreatePersonaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos", "details": err.Error()})
+		return
+	}
+
+	persona, err := services.CreatePersonaRedis(req)
+	if err != nil {
+		if err.Error() == "email ya existe" {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Actualizar métrica total
+	personasCount, _ := config.RedisClient.LLen(ctx, "personas").Result()
+	middleware.UpdatePersonasMetrics(int(personasCount))
+
+	c.JSON(http.StatusCreated, persona)
+}
+
+// DeletePersonaHandler elimina una persona por ID
+// @Summary Eliminar persona
+// @Description Elimina una persona por su ID (hash, lista y mapeo de email)
+// @Tags Personas
+// @Accept json
+// @Produce json
+// @Param id path int true "ID de la persona"
+// @Success 200 {object} map[string]string "Persona eliminada"
+// @Failure 404 {object} map[string]string "Persona no encontrada"
+// @Failure 400 {object} map[string]string "ID inválido"
+// @Failure 500 {object} map[string]string "Error interno del servidor"
+// @Router /personas/{id} [delete]
+func DeletePersonaHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		return
+	}
+
+	if err := services.DeletePersonaRedis(id); err != nil {
+		if err.Error() == "persona "+idStr+" no encontrada" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Persona no encontrada"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Actualizar métrica total
+	personasCount, _ := config.RedisClient.LLen(ctx, "personas").Result()
+	middleware.UpdatePersonasMetrics(int(personasCount))
+
+	c.JSON(http.StatusOK, gin.H{"message": "Persona eliminada"})
 }

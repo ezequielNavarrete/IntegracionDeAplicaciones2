@@ -31,6 +31,8 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/personas/neighborhood/:neighborhood", handlers.GetPersonasByNeighborhood)
 	r.GET("/personas/emails", handlers.GetPersonasWithEmails)          // Nuevo: lista con emails
 	r.POST("/personas/regenerate", handlers.RegeneratePersonasHandler) // Nuevo: regenerar personas
+	r.POST("/personas", handlers.CreatePersonaHandler)                 // Crear persona individual
+	r.DELETE("/personas/:id", handlers.DeletePersonaHandler)           // Eliminar persona individual
 
 	// Endpoints para tachos
 	r.GET("/tachos", handlers.GetAllTachosHandler) // Obtener todos los tachos
@@ -40,8 +42,10 @@ func SetupRoutes(r *gin.Engine) {
 	r.PUT("/tachos/:id_tacho/prioridad", handlers.UpdatePrioridadTachoHandler)
 
 	// Endpoints para camiones
-	r.GET("/camiones", handlers.GetAllCamionesHandler)    // Obtener todos los camiones con JOIN
-	r.GET("/camiones/:id", handlers.GetCamionByIDHandler) // Obtener camión por ID con JOIN
+	r.GET("/camiones", handlers.GetAllCamionesHandler)    // Obtener todos los camiones (MySQL)
+	r.GET("/camiones/:id", handlers.GetCamionByIDHandler) // Obtener camión por ID (MySQL)
+	r.POST("/camiones", handlers.CreateCamionHandler)     // Crear camión (Redis temporal)
+	r.DELETE("/camiones/:id", handlers.DeleteCamionHandler) // Eliminar camión (Redis temporal)
 
 	// Endpoints para centros
 	r.GET("/centros", handlers.GetAllCentrosHandler)     // Obtener todos los centros con JOIN MySQL + Neo4j
