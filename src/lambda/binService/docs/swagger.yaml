@@ -173,6 +173,29 @@ definitions:
       lon:
         type: number
     type: object
+  services.CreatePersonaRequest:
+    properties:
+      email:
+        type: string
+      neighborhood_id:
+        minimum: 1
+        type: integer
+      nombre:
+        minLength: 2
+        type: string
+      route_number:
+        minimum: 1
+        type: integer
+      truck_id:
+        minimum: 1
+        type: integer
+    required:
+    - email
+    - neighborhood_id
+    - nombre
+    - route_number
+    - truck_id
+    type: object
   services.CreateTachoRequest:
     properties:
       capacidad:
@@ -210,6 +233,21 @@ definitions:
         items:
           type: integer
         type: array
+    type: object
+  services.Persona:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      neighborhood_id:
+        type: integer
+      nombre:
+        type: string
+      route_number:
+        type: integer
+      truck_id:
+        type: integer
     type: object
   services.SimplifiedRoute:
     properties:
@@ -468,7 +506,87 @@ paths:
       summary: Obtener todas las personas
       tags:
       - Personas
+    post:
+      consumes:
+      - application/json
+      description: Crea una persona asociada a una ruta y camión, y registra el mapeo
+        email->userID
+      parameters:
+      - description: Datos de la persona
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreatePersonaRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Persona creada
+          schema:
+            $ref: '#/definitions/services.Persona'
+        "400":
+          description: Solicitud inválida
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Email ya existe
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Crear persona
+      tags:
+      - Personas
   /personas/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina una persona por su ID (hash, lista y mapeo de email)
+      parameters:
+      - description: ID de la persona
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Persona eliminada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: ID inválido
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Persona no encontrada
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar persona
+      tags:
+      - Personas
     get:
       consumes:
       - application/json
