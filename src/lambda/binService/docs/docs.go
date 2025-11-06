@@ -51,6 +51,56 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Inserta un camión en MySQL y devuelve el registro enriquecido (tipo y estado por JOIN).\nReferencia de catálogos para id_tipo e id_estado.\nid_tipo: 1=Basura, 2=Reciclaje, 3=Limpieza, 4=Especial.\nid_estado: 1=Operativo, 2=En uso, 3=En mantenimiento, 4=Fuera de servicio.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Camiones"
+                ],
+                "summary": "Crear camión",
+                "parameters": [
+                    {
+                        "description": "Datos del camión a crear",
+                        "name": "camion",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateCamionMySQLRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Camión creado",
+                        "schema": {
+                            "$ref": "#/definitions/services.Camion"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/camiones/{id}": {
@@ -99,6 +149,63 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Elimina el registro de la tabla Camiones por ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Camiones"
+                ],
+                "summary": "Eliminar camión",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del camión",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Camión eliminado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Camión no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1665,7 +1772,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "matricula": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "modelo": {
                     "type": "string"
