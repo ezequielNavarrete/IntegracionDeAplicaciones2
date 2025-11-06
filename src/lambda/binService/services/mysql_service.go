@@ -131,13 +131,13 @@ type CaracteristicaTacho struct {
 
 // TachoCompleto representa un tacho con toda la información necesaria
 type TachoCompleto struct {
-	IDTacho         int                    `json:"id_tacho" gorm:"column:id_tacho"`
-	Neighborhood    int                    `json:"neighborhood" gorm:"column:neighborhood"`
-	Latitud         float64                `json:"latitud" gorm:"column:latitud"`
-	Longitud        float64                `json:"longitud" gorm:"column:longitud"`
-	Estado          string                 `json:"estado" gorm:"column:estado"`
-	Capacidad       float64                `json:"capacidad" gorm:"column:capacidad"`
-	Caracteristicas []CaracteristicaTacho  `json:"caracteristicas"`
+	IDTacho         int                   `json:"id_tacho" gorm:"column:id_tacho"`
+	Neighborhood    int                   `json:"neighborhood" gorm:"column:neighborhood"`
+	Latitud         float64               `json:"latitud" gorm:"column:latitud"`
+	Longitud        float64               `json:"longitud" gorm:"column:longitud"`
+	Estado          string                `json:"estado" gorm:"column:estado"`
+	Capacidad       float64               `json:"capacidad" gorm:"column:capacidad"`
+	Caracteristicas []CaracteristicaTacho `json:"caracteristicas"`
 }
 
 // GetAllTachos obtiene todos los tachos con información completa
@@ -189,7 +189,7 @@ func GetAllTachos() ([]TachoCompleto, error) {
 
 	// Agrupar características por tacho
 	tachosMap := make(map[int]*TachoCompleto)
-	
+
 	for _, row := range rows {
 		// Si el tacho no existe en el map, crearlo
 		if _, exists := tachosMap[row.IDTacho]; !exists {

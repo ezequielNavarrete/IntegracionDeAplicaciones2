@@ -11,16 +11,16 @@ import (
 
 // RouteNavigationResponse representa la respuesta de navegación punto a punto
 type RouteNavigationResponse struct {
-	RouteID         string                  `json:"route_id"`
-	CurrentIndex    int                     `json:"current_index"`
-	TotalPoints     int                     `json:"total_points"`
-	CurrentPoint    *services.Coordinate    `json:"current_point"`
-	NextPoint       *services.Coordinate    `json:"next_point,omitempty"`
-	IsFirstPoint    bool                    `json:"is_first_point"`
-	IsLastPoint     bool                    `json:"is_last_point"`
-	Progress        float64                 `json:"progress_percentage"`
-	NextPointKey    string                  `json:"next_point_key,omitempty"`    // Clave para obtener el siguiente punto
-	PreviousKey     string                  `json:"previous_point_key,omitempty"` // Clave para volver al anterior
+	RouteID      string               `json:"route_id"`
+	CurrentIndex int                  `json:"current_index"`
+	TotalPoints  int                  `json:"total_points"`
+	CurrentPoint *services.Coordinate `json:"current_point"`
+	NextPoint    *services.Coordinate `json:"next_point,omitempty"`
+	IsFirstPoint bool                 `json:"is_first_point"`
+	IsLastPoint  bool                 `json:"is_last_point"`
+	Progress     float64              `json:"progress_percentage"`
+	NextPointKey string               `json:"next_point_key,omitempty"`     // Clave para obtener el siguiente punto
+	PreviousKey  string               `json:"previous_point_key,omitempty"` // Clave para volver al anterior
 }
 
 // GetRouteNavigationHandler obtiene el punto actual y el siguiente de una ruta

@@ -20,10 +20,10 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/v2/ruta-optima-by-header", handlers.GetRutaHandlerV2ByHeader) // Con header X-User-Email
 
 	// Endpoints V2 de navegación punto a punto
-	r.GET("/v2/ruta-navegacion/:neighborhood/:route", handlers.GetRouteNavigationHandler)         // Navegación por barrio/ruta
-	r.GET("/v2/ruta-navegacion/:neighborhood/:route/start", handlers.GetRouteStartHandler)        // Iniciar navegación
-	r.GET("/v2/ruta-navegacion-by-header", handlers.GetRouteNavigationByHeaderHandler)            // Navegación por email
-	r.GET("/v2/ruta-navegacion-by-header/start", handlers.GetRouteStartByHeaderHandler)           // Iniciar navegación por email
+	r.GET("/v2/ruta-navegacion/:neighborhood/:route", handlers.GetRouteNavigationHandler)  // Navegación por barrio/ruta
+	r.GET("/v2/ruta-navegacion/:neighborhood/:route/start", handlers.GetRouteStartHandler) // Iniciar navegación
+	r.GET("/v2/ruta-navegacion-by-header", handlers.GetRouteNavigationByHeaderHandler)     // Navegación por email
+	r.GET("/v2/ruta-navegacion-by-header/start", handlers.GetRouteStartByHeaderHandler)    // Iniciar navegación por email
 
 	// Nuevos endpoints para personas (Redis)
 	r.GET("/personas", handlers.GetAllPersonas)
@@ -51,6 +51,7 @@ func SetupRoutes(r *gin.Engine) {
 	r.POST("/cron/update-routes", handlers.UpdateAllRoutesHandler) // Actualizar todas las rutas en caché
 
 	// Endpoints para consultar rutas cacheadas
+	r.GET("/routes/neighborhoods", handlers.GetAllNeighborhoodsWithRoutesHandler)                    // Listar todos los neighborhoods con sus rutas
 	r.GET("/routes/neighborhood/:neighborhood", handlers.GetRoutesByNeighborhoodHandler)             // Obtener todas las rutas de un barrio
 	r.GET("/routes/neighborhood/:neighborhood/route/:routeNumber", handlers.GetSpecificRouteHandler) // Obtener una ruta específica
 }
