@@ -106,7 +106,7 @@ definitions:
       marca:
         type: string
       matricula:
-        type: string
+        type: integer
       modelo:
         type: string
       nombre_tipo:
@@ -173,33 +173,45 @@ definitions:
       lon:
         type: number
     type: object
-  services.CreateCamionRequestRedis:
+  services.CreateCamionMySQLRequest:
     properties:
       capacidad:
+        minimum: 1
+        type: integer
+      id_estado:
+        description: 1 Operativo, 2 En uso, 3 En mantenimiento, 4 Fuera de servicio
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        minimum: 1
+        type: integer
+      id_tipo:
+        description: 1 Basura, 2 Reciclaje, 3 Limpieza, 4 Especial
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
         minimum: 1
         type: integer
       marca:
         minLength: 2
         type: string
       matricula:
-        minLength: 1
-        type: string
+        minimum: 1
+        type: integer
       modelo:
         minLength: 2
         type: string
-      nombre_tipo:
-        description: Basura | Reciclaje | Limpieza | Especial
-        type: string
-      tipo_estado:
-        description: Operativo | En uso | En mantenimiento | Fuera de servicio
-        type: string
     required:
     - capacidad
+    - id_estado
+    - id_tipo
     - marca
     - matricula
     - modelo
-    - nombre_tipo
-    - tipo_estado
     type: object
   services.CreateTachoRequest:
     properties:
@@ -317,15 +329,18 @@ paths:
     post:
       consumes:
       - application/json
-      description: Crea un camión y lo almacena en Redis usando nombres de tipo y
-        estado directamente. No impacta los listados actuales basados en MySQL.
+      description: |-
+        Inserta un camión en MySQL y devuelve el registro enriquecido (tipo y estado por JOIN).
+        Referencia de catálogos para id_tipo e id_estado.
+        id_tipo: 1=Basura, 2=Reciclaje, 3=Limpieza, 4=Especial.
+        id_estado: 1=Operativo, 2=En uso, 3=En mantenimiento, 4=Fuera de servicio.
       parameters:
       - description: Datos del camión a crear
         in: body
         name: camion
         required: true
         schema:
-          $ref: '#/definitions/services.CreateCamionRequestRedis'
+          $ref: '#/definitions/services.CreateCamionMySQLRequest'
       produces:
       - application/json
       responses:
@@ -350,8 +365,7 @@ paths:
       - Camiones
   /camiones/{id}:
     delete:
-      description: Elimina el hash camion:<id> y remueve su ID de la lista camiones:ids
-        (solo almacenamiento temporal en Redis)
+      description: Elimina el registro de la tabla Camiones por ID
       parameters:
       - description: ID del camión
         in: path

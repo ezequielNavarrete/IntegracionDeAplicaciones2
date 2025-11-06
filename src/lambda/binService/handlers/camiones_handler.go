@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
-	"fmt"
 )
 
 // GetAllCamionesHandler obtiene todos los camiones con información de tipo y estado
@@ -85,25 +85,38 @@ func GetCamionByIDHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// CreateCamionHandler crea un nuevo camión en Redis (almacenamiento temporal)
+// CreateCamionHandler crea un nuevo camión en MySQL
 // @Summary Crear camión
-// @Description Crea un camión y lo almacena en Redis usando nombres de tipo y estado directamente. No impacta los listados actuales basados en MySQL.
+// @Description Inserta un camión en MySQL y devuelve el registro enriquecido (tipo y estado por JOIN).
+// @Description Referencia de catálogos para id_tipo e id_estado.
+// @Description id_tipo: 1=Basura, 2=Reciclaje, 3=Limpieza, 4=Especial.
+// @Description id_estado: 1=Operativo, 2=En uso, 3=En mantenimiento, 4=Fuera de servicio.
 // @Tags Camiones
 // @Accept json
 // @Produce json
-// @Param camion body services.CreateCamionRequestRedis true "Datos del camión a crear"
+// @Param camion body services.CreateCamionMySQLRequest true "Datos del camión a crear"
 // @Success 201 {object} services.Camion "Camión creado"
 // @Failure 400 {object} map[string]string "Datos inválidos"
 // @Failure 500 {object} map[string]string "Error interno"
 // @Router /camiones [post]
 func CreateCamionHandler(c *gin.Context) {
-	var req services.CreateCamionRequestRedis
+	var req services.CreateCamionMySQLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	camion, err := services.CreateCamionRedis(req)
+	// Validaciones explícitas de dominio según catálogo actual
+	if req.IdTipo < 1 || req.IdTipo > 4 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id_tipo fuera de rango (1..4)"})
+		return
+	}
+	if req.IdEstado < 1 || req.IdEstado > 4 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id_estado fuera de rango (1..4)"})
+		return
+	}
+
+	camion, err := services.CreateCamionMySQL(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -112,9 +125,9 @@ func CreateCamionHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, camion)
 }
 
-// DeleteCamionHandler elimina un camión almacenado en Redis
+// DeleteCamionHandler elimina un camión en MySQL
 // @Summary Eliminar camión
-// @Description Elimina el hash camion:<id> y remueve su ID de la lista camiones:ids (solo almacenamiento temporal en Redis)
+// @Description Elimina el registro de la tabla Camiones por ID
 // @Tags Camiones
 // @Produce json
 // @Param id path int true "ID del camión"
@@ -131,7 +144,7 @@ func DeleteCamionHandler(c *gin.Context) {
 		return
 	}
 
-	err = services.DeleteCamionRedis(id)
+	err = services.DeleteCamionMySQL(id)
 	if err != nil {
 		// Diferenciar not found
 		if err.Error() == fmt.Sprintf("camion %d not found", id) {

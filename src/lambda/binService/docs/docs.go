@@ -53,7 +53,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Crea un camión y lo almacena en Redis usando nombres de tipo y estado directamente. No impacta los listados actuales basados en MySQL.",
+                "description": "Inserta un camión en MySQL y devuelve el registro enriquecido (tipo y estado por JOIN).\nReferencia de catálogos para id_tipo e id_estado.\nid_tipo: 1=Basura, 2=Reciclaje, 3=Limpieza, 4=Especial.\nid_estado: 1=Operativo, 2=En uso, 3=En mantenimiento, 4=Fuera de servicio.",
                 "consumes": [
                     "application/json"
                 ],
@@ -71,7 +71,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/services.CreateCamionRequestRedis"
+                            "$ref": "#/definitions/services.CreateCamionMySQLRequest"
                         }
                     }
                 ],
@@ -159,7 +159,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Elimina el hash camion:\u003cid\u003e y remueve su ID de la lista camiones:ids (solo almacenamiento temporal en Redis)",
+                "description": "Elimina el registro de la tabla Camiones por ID",
                 "produces": [
                     "application/json"
                 ],
@@ -1653,7 +1653,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "matricula": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "modelo": {
                     "type": "string"
@@ -1758,40 +1758,54 @@ const docTemplate = `{
                 }
             }
         },
-        "services.CreateCamionRequestRedis": {
+        "services.CreateCamionMySQLRequest": {
             "type": "object",
             "required": [
                 "capacidad",
+                "id_estado",
+                "id_tipo",
                 "marca",
                 "matricula",
-                "modelo",
-                "nombre_tipo",
-                "tipo_estado"
+                "modelo"
             ],
             "properties": {
                 "capacidad": {
                     "type": "integer",
                     "minimum": 1
                 },
+                "id_estado": {
+                    "description": "1 Operativo, 2 En uso, 3 En mantenimiento, 4 Fuera de servicio",
+                    "type": "integer",
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4
+                    ]
+                },
+                "id_tipo": {
+                    "description": "1 Basura, 2 Reciclaje, 3 Limpieza, 4 Especial",
+                    "type": "integer",
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4
+                    ]
+                },
                 "marca": {
                     "type": "string",
                     "minLength": 2
                 },
                 "matricula": {
-                    "type": "string",
-                    "minLength": 1
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "modelo": {
                     "type": "string",
                     "minLength": 2
-                },
-                "nombre_tipo": {
-                    "description": "Basura | Reciclaje | Limpieza | Especial",
-                    "type": "string"
-                },
-                "tipo_estado": {
-                    "description": "Operativo | En uso | En mantenimiento | Fuera de servicio",
-                    "type": "string"
                 }
             }
         },
