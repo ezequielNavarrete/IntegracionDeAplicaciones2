@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -197,4 +199,62 @@ func GetPersonasByNeighborhood(c *gin.Context) {
 		"total":        len(result),
 		"personas":     result,
 	})
+}
+
+// CreatePersonaHandler crea una nueva persona en Redis
+// @Summary Crear persona
+// @Description Crea una persona (hash persona:<id>, lista personas, mapeo email->id)
+// @Tags Personas
+// @Accept json
+// @Produce json
+// @Param persona body services.CreatePersonaRequest true "Datos de la persona"
+// @Success 201 {object} services.Persona "Persona creada"
+// @Failure 400 {object} map[string]string "Datos inválidos"
+// @Failure 500 {object} map[string]string "Error interno"
+// @Router /personas [post]
+func CreatePersonaHandler(c *gin.Context) {
+	var req services.CreatePersonaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	persona, err := services.CreatePersonaRedis(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, persona)
+}
+
+// DeletePersonaHandler elimina una persona en Redis
+// @Summary Eliminar persona
+// @Description Borra el hash y mapeo email->id de una persona
+// @Tags Personas
+// @Produce json
+// @Param id path int true "ID de la persona"
+// @Success 200 {object} map[string]string "Persona eliminada"
+// @Failure 400 {object} map[string]string "ID inválido"
+// @Failure 404 {object} map[string]string "Persona no encontrada"
+// @Failure 500 {object} map[string]string "Error interno"
+// @Router /personas/{id} [delete]
+func DeletePersonaHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		return
+	}
+
+	if err := services.DeletePersonaRedis(id); err != nil {
+		if err.Error() == fmt.Sprintf("persona %d not found", id) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Persona no encontrada"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Persona eliminada", "id": id})
 }

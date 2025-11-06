@@ -30,6 +30,8 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/personas/:id", handlers.GetPersonaByID)
 	r.GET("/personas/neighborhood/:neighborhood", handlers.GetPersonasByNeighborhood)
 	r.GET("/personas/emails", handlers.GetPersonasWithEmails)          // Nuevo: lista con emails
+	r.POST("/personas", handlers.CreatePersonaHandler)                 // Crear persona (Redis)
+	r.DELETE("/personas/:id", handlers.DeletePersonaHandler)           // Eliminar persona (Redis)
 	r.POST("/personas/regenerate", handlers.RegeneratePersonasHandler) // Nuevo: regenerar personas
 
 	// Endpoints para tachos

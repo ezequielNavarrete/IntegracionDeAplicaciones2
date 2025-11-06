@@ -428,6 +428,56 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Crea una persona (hash persona:\u003cid\u003e, lista personas, mapeo email-\u003eid)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Crear persona",
+                "parameters": [
+                    {
+                        "description": "Datos de la persona",
+                        "name": "persona",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreatePersonaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Persona creada",
+                        "schema": {
+                            "$ref": "#/definitions/services.Persona"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/personas/emails": {
@@ -582,6 +632,63 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Borra el hash y mapeo email-\u003eid de una persona",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Eliminar persona",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la persona",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Persona eliminada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Persona no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1795,6 +1902,37 @@ const docTemplate = `{
                 }
             }
         },
+        "services.CreatePersonaRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "neighborhood_id",
+                "nombre",
+                "route_number",
+                "truck_id"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "neighborhood_id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "nombre": {
+                    "type": "string",
+                    "minLength": 2
+                },
+                "route_number": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "truck_id": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
         "services.CreateTachoRequest": {
             "type": "object",
             "properties": {
@@ -1849,6 +1987,29 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "services.Persona": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "neighborhoodID": {
+                    "type": "integer"
+                },
+                "nombre": {
+                    "type": "string"
+                },
+                "routeNumber": {
+                    "type": "integer"
+                },
+                "truckID": {
+                    "type": "integer"
                 }
             }
         },
