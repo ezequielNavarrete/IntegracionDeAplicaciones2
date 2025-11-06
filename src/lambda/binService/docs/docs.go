@@ -428,6 +428,65 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Crea una persona asociada a una ruta y camión, y registra el mapeo email-\u003euserID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Crear persona",
+                "parameters": [
+                    {
+                        "description": "Datos de la persona",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreatePersonaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Persona creada",
+                        "schema": {
+                            "$ref": "#/definitions/services.Persona"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Email ya existe",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/personas/emails": {
@@ -569,6 +628,66 @@ const docTemplate = `{
                         "description": "Datos de la persona",
                         "schema": {
                             "$ref": "#/definitions/handlers.PersonaResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Persona no encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Elimina una persona por su ID (hash, lista y mapeo de email)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Personas"
+                ],
+                "summary": "Eliminar persona",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID de la persona",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Persona eliminada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "404": {
@@ -1758,54 +1877,34 @@ const docTemplate = `{
                 }
             }
         },
-        "services.CreateCamionMySQLRequest": {
+        "services.CreatePersonaRequest": {
             "type": "object",
             "required": [
-                "capacidad",
-                "id_estado",
-                "id_tipo",
-                "marca",
-                "matricula",
-                "modelo"
+                "email",
+                "neighborhood_id",
+                "nombre",
+                "route_number",
+                "truck_id"
             ],
             "properties": {
-                "capacidad": {
+                "email": {
+                    "type": "string"
+                },
+                "neighborhood_id": {
                     "type": "integer",
                     "minimum": 1
                 },
-                "id_estado": {
-                    "description": "1 Operativo, 2 En uso, 3 En mantenimiento, 4 Fuera de servicio",
-                    "type": "integer",
-                    "minimum": 1,
-                    "enum": [
-                        1,
-                        2,
-                        3,
-                        4
-                    ]
-                },
-                "id_tipo": {
-                    "description": "1 Basura, 2 Reciclaje, 3 Limpieza, 4 Especial",
-                    "type": "integer",
-                    "minimum": 1,
-                    "enum": [
-                        1,
-                        2,
-                        3,
-                        4
-                    ]
-                },
-                "marca": {
+                "nombre": {
                     "type": "string",
                     "minLength": 2
                 },
-                "matricula": {
+                "route_number": {
                     "type": "integer",
                     "minimum": 1
                 },
-                "modelo": {
-                    "type": "string",
-                    "minLength": 2
+                "truck_id": {
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         },
@@ -1863,6 +1962,29 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "services.Persona": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "neighborhood_id": {
+                    "type": "integer"
+                },
+                "nombre": {
+                    "type": "string"
+                },
+                "route_number": {
+                    "type": "integer"
+                },
+                "truck_id": {
+                    "type": "integer"
                 }
             }
         },
