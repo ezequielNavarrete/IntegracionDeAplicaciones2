@@ -83,3 +83,33 @@ func GetSpecificRouteHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, route)
 }
+
+// GetAllNeighborhoodsWithRoutesHandler lista todos los neighborhoods con sus rutas disponibles
+// @Summary Listar neighborhoods y sus rutas
+// @Description Devuelve un resumen de todos los neighborhoods con las rutas disponibles en cada uno
+// @Tags Rutas
+// @Accept json
+// @Produce json
+// @Success 200 {array} services.NeighborhoodRoutesInfo "Lista de neighborhoods con sus rutas"
+// @Failure 500 {object} map[string]string "Error interno del servidor"
+// @Router /routes/neighborhoods [get]
+func GetAllNeighborhoodsWithRoutesHandler(c *gin.Context) {
+	neighborhoods, err := services.GetAllNeighborhoodsWithRoutes()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(neighborhoods) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message":       "No hay rutas disponibles",
+			"neighborhoods": []services.NeighborhoodRoutesInfo{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total_neighborhoods": len(neighborhoods),
+		"neighborhoods":       neighborhoods,
+	})
+}

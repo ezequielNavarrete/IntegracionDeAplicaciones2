@@ -134,3 +134,55 @@ func GetAllRoutesForNeighborhood(neighborhood int) ([]SimplifiedRoute, error) {
 
 	return routes, nil
 }
+
+// NeighborhoodRoutesInfo representa la información de rutas por neighborhood
+type NeighborhoodRoutesInfo struct {
+	Neighborhood int   `json:"neighborhood"`
+	Routes       []int `json:"routes"`
+}
+
+// GetAllNeighborhoodsWithRoutes obtiene todos los neighborhoods y sus rutas disponibles
+func GetAllNeighborhoodsWithRoutes() ([]NeighborhoodRoutesInfo, error) {
+	if config.RedisClient == nil {
+		return nil, fmt.Errorf("redis client not available")
+	}
+
+	ctx := context.Background()
+	pattern := "barrio_*_ruta_*"
+
+	keys, err := config.RedisClient.Keys(ctx, pattern).Result()
+	if err != nil {
+		return nil, fmt.Errorf("error getting keys: %w", err)
+	}
+
+	// Map para agrupar rutas por neighborhood
+	neighborhoodMap := make(map[int]map[int]bool)
+
+	// Parsear las keys para extraer neighborhood y route number
+	for _, key := range keys {
+		var neighborhood, routeNum int
+		// Formato: barrio_X_ruta_Y
+		if _, err := fmt.Sscanf(key, "barrio_%d_ruta_%d", &neighborhood, &routeNum); err == nil {
+			if neighborhoodMap[neighborhood] == nil {
+				neighborhoodMap[neighborhood] = make(map[int]bool)
+			}
+			neighborhoodMap[neighborhood][routeNum] = true
+		}
+	}
+
+	// Convertir el map a slice
+	result := make([]NeighborhoodRoutesInfo, 0, len(neighborhoodMap))
+	for neighborhood, routesMap := range neighborhoodMap {
+		routes := make([]int, 0, len(routesMap))
+		for routeNum := range routesMap {
+			routes = append(routes, routeNum)
+		}
+		
+		result = append(result, NeighborhoodRoutesInfo{
+			Neighborhood: neighborhood,
+			Routes:       routes,
+		})
+	}
+
+	return result, nil
+}

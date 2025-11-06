@@ -613,6 +613,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/routes/neighborhoods": {
+            "get": {
+                "description": "Devuelve un resumen de todos los neighborhoods con las rutas disponibles en cada uno",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Rutas"
+                ],
+                "summary": "Listar neighborhoods y sus rutas",
+                "responses": {
+                    "200": {
+                        "description": "Lista de neighborhoods con sus rutas",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/services.NeighborhoodRoutesInfo"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/ruta-optima": {
             "get": {
                 "description": "Devuelve la ruta óptima y distancias para la zona de la persona asociada al email",
@@ -1656,6 +1691,20 @@ const docTemplate = `{
                 },
                 "tacho_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "services.NeighborhoodRoutesInfo": {
+            "type": "object",
+            "properties": {
+                "neighborhood": {
+                    "type": "integer"
+                },
+                "routes": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

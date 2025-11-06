@@ -202,6 +202,15 @@ definitions:
       tacho_id:
         type: integer
     type: object
+  services.NeighborhoodRoutesInfo:
+    properties:
+      neighborhood:
+        type: integer
+      routes:
+        items:
+          type: integer
+        type: array
+    type: object
   services.SimplifiedRoute:
     properties:
       bins_coords:
@@ -652,6 +661,30 @@ paths:
               type: string
             type: object
       summary: Obtener ruta específica
+      tags:
+      - Rutas
+  /routes/neighborhoods:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve un resumen de todos los neighborhoods con las rutas disponibles
+        en cada uno
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de neighborhoods con sus rutas
+          schema:
+            items:
+              $ref: '#/definitions/services.NeighborhoodRoutesInfo'
+            type: array
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Listar neighborhoods y sus rutas
       tags:
       - Rutas
   /ruta-optima:
