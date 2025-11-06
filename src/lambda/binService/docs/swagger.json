@@ -1870,6 +1870,57 @@
                 }
             }
         },
+        "services.CreateCamionMySQLRequest": {
+            "type": "object",
+            "required": [
+                "capacidad",
+                "id_estado",
+                "id_tipo",
+                "marca",
+                "matricula",
+                "modelo"
+            ],
+            "properties": {
+                "capacidad": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "id_estado": {
+                    "description": "1 Operativo, 2 En uso, 3 En mantenimiento, 4 Fuera de servicio",
+                    "type": "integer",
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4
+                    ]
+                },
+                "id_tipo": {
+                    "description": "1 Basura, 2 Reciclaje, 3 Limpieza, 4 Especial",
+                    "type": "integer",
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4
+                    ]
+                },
+                "marca": {
+                    "type": "string",
+                    "minLength": 2
+                },
+                "matricula": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "modelo": {
+                    "type": "string",
+                    "minLength": 2
+                }
+            }
+        },
         "services.CreatePersonaRequest": {
             "type": "object",
             "required": [
