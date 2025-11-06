@@ -6,6 +6,7 @@ import (
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
+	"fmt"
 )
 
 // GetAllCamionesHandler obtiene todos los camiones con información de tipo y estado
@@ -82,4 +83,64 @@ func GetCamionByIDHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// CreateCamionHandler crea un nuevo camión en Redis (almacenamiento temporal)
+// @Summary Crear camión
+// @Description Crea un camión y lo almacena en Redis usando nombres de tipo y estado directamente. No impacta los listados actuales basados en MySQL.
+// @Tags Camiones
+// @Accept json
+// @Produce json
+// @Param camion body services.CreateCamionRequestRedis true "Datos del camión a crear"
+// @Success 201 {object} services.Camion "Camión creado"
+// @Failure 400 {object} map[string]string "Datos inválidos"
+// @Failure 500 {object} map[string]string "Error interno"
+// @Router /camiones [post]
+func CreateCamionHandler(c *gin.Context) {
+	var req services.CreateCamionRequestRedis
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	camion, err := services.CreateCamionRedis(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, camion)
+}
+
+// DeleteCamionHandler elimina un camión almacenado en Redis
+// @Summary Eliminar camión
+// @Description Elimina el hash camion:<id> y remueve su ID de la lista camiones:ids (solo almacenamiento temporal en Redis)
+// @Tags Camiones
+// @Produce json
+// @Param id path int true "ID del camión"
+// @Success 200 {object} map[string]string "Camión eliminado"
+// @Failure 400 {object} map[string]string "ID inválido"
+// @Failure 404 {object} map[string]string "Camión no encontrado"
+// @Failure 500 {object} map[string]string "Error interno"
+// @Router /camiones/{id} [delete]
+func DeleteCamionHandler(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+		return
+	}
+
+	err = services.DeleteCamionRedis(id)
+	if err != nil {
+		// Diferenciar not found
+		if err.Error() == fmt.Sprintf("camion %d not found", id) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Camión no encontrado"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Camión eliminado", "id": id})
 }

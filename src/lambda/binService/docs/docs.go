@@ -51,6 +51,56 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Crea un camión y lo almacena en Redis usando nombres de tipo y estado directamente. No impacta los listados actuales basados en MySQL.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Camiones"
+                ],
+                "summary": "Crear camión",
+                "parameters": [
+                    {
+                        "description": "Datos del camión a crear",
+                        "name": "camion",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateCamionRequestRedis"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Camión creado",
+                        "schema": {
+                            "$ref": "#/definitions/services.Camion"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/camiones/{id}": {
@@ -99,6 +149,63 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Elimina el hash camion:\u003cid\u003e y remueve su ID de la lista camiones:ids (solo almacenamiento temporal en Redis)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Camiones"
+                ],
+                "summary": "Eliminar camión",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del camión",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Camión eliminado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Camión no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1648,6 +1755,43 @@ const docTemplate = `{
                 },
                 "lon": {
                     "type": "number"
+                }
+            }
+        },
+        "services.CreateCamionRequestRedis": {
+            "type": "object",
+            "required": [
+                "capacidad",
+                "marca",
+                "matricula",
+                "modelo",
+                "nombre_tipo",
+                "tipo_estado"
+            ],
+            "properties": {
+                "capacidad": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "marca": {
+                    "type": "string",
+                    "minLength": 2
+                },
+                "matricula": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "modelo": {
+                    "type": "string",
+                    "minLength": 2
+                },
+                "nombre_tipo": {
+                    "description": "Basura | Reciclaje | Limpieza | Especial",
+                    "type": "string"
+                },
+                "tipo_estado": {
+                    "description": "Operativo | En uso | En mantenimiento | Fuera de servicio",
+                    "type": "string"
                 }
             }
         },

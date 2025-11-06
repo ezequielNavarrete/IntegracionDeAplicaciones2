@@ -40,8 +40,10 @@ func SetupRoutes(r *gin.Engine) {
 	r.PUT("/tachos/:id_tacho/prioridad", handlers.UpdatePrioridadTachoHandler)
 
 	// Endpoints para camiones
-	r.GET("/camiones", handlers.GetAllCamionesHandler)    // Obtener todos los camiones con JOIN
-	r.GET("/camiones/:id", handlers.GetCamionByIDHandler) // Obtener camión por ID con JOIN
+	r.GET("/camiones", handlers.GetAllCamionesHandler)    // Obtener todos los camiones (MySQL)
+	r.GET("/camiones/:id", handlers.GetCamionByIDHandler) // Obtener camión por ID (MySQL)
+	r.POST("/camiones", handlers.CreateCamionHandler)     // Crear camión (Redis temporal)
+	r.DELETE("/camiones/:id", handlers.DeleteCamionHandler) // Eliminar camión (Redis temporal)
 
 	// Endpoints para centros
 	r.GET("/centros", handlers.GetAllCentrosHandler)     // Obtener todos los centros con JOIN MySQL + Neo4j
