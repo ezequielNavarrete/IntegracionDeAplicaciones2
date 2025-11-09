@@ -35,10 +35,10 @@ func SetupRoutes(r *gin.Engine) {
 	r.DELETE("/personas/:id", handlers.DeletePersonaHandler)           // Eliminar persona individual
 
 	// Endpoints para tachos
-	r.GET("/tachos", handlers.GetAllTachosHandler)     // Obtener todos los tachos
-	r.GET("/tachos/:id", handlers.GetTachoByIDHandler) // Obtener un tacho por ID
-	r.POST("/tachos", handlers.CreateTachoHandler)     // Crear nuevo tacho
-	r.DELETE("/tachos", handlers.DeleteTachoHandler)   // Eliminar tacho (por query parameter)
+	r.GET("/tachos", handlers.GetAllTachosHandler)       // Obtener todos los tachos
+	r.GET("/tachos/:id", handlers.GetTachoByIDHandler)   // Obtener un tacho por ID
+	r.POST("/tachos", handlers.CreateTachoHandler)       // Crear nuevo tacho
+	r.DELETE("/tachos/:id", handlers.DeleteTachoHandler) // Eliminar tacho y sus características (por ID de MySQL)
 	r.PUT("/tachos/:id_tacho/capacidad", handlers.UpdateCapacidadTachoHandler)
 	r.PUT("/tachos/:id_tacho/prioridad", handlers.UpdatePrioridadTachoHandler)
 
@@ -55,10 +55,10 @@ func SetupRoutes(r *gin.Engine) {
 	r.DELETE("/centros", handlers.DeleteCentroHandler)   // Eliminar centro de MySQL + MongoDB
 
 	// Endpoints para reclamos
-	r.GET("/reclamos", handlers.GetAllReclamosHandler)         // Obtener todos los reclamos
-	r.GET("/reclamos/:id", handlers.GetReclamoByIDHandler)     // Obtener un reclamo por ID
-	r.POST("/reclamos", handlers.CreateReclamoHandler)         // Crear nuevo reclamo
-	r.DELETE("/reclamos/:id", handlers.DeleteReclamoHandler)   // Eliminar reclamo
+	r.GET("/reclamos", handlers.GetAllReclamosHandler)                 // Obtener todos los reclamos
+	r.GET("/reclamos/:id", handlers.GetReclamoByIDHandler)             // Obtener un reclamo por ID
+	r.POST("/reclamos", handlers.CreateReclamoHandler)                 // Crear nuevo reclamo
+	r.DELETE("/reclamos/:id", handlers.DeleteReclamoHandler)           // Eliminar reclamo
 	r.PUT("/reclamos/:id/estado", handlers.UpdateReclamoEstadoHandler) // Actualizar estado del reclamo
 
 	// Endpoints para cron jobs

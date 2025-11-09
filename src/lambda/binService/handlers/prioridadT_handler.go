@@ -54,8 +54,8 @@ func UpdatePrioridadTachoHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":               "Características actualizadas correctamente",
-		"id_tacho":              id,
+		"message":                 "Características actualizadas correctamente",
+		"id_tacho":                id,
 		"caracteristicas_updated": len(request.Caracteristicas),
 	})
 }
