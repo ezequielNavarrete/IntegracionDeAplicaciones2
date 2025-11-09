@@ -104,19 +104,36 @@ func GetAllTachosFromMongoDB() (map[int]BinMongo, error) {
 	return binsMap, nil
 }
 
-// createTachoInMongoDB crea un tacho en MongoDB
-func createTachoInMongoDB(request CreateTachoRequest) error {
+// createTachoInMongoDB crea un tacho en MongoDB y retorna el ID generado
+func createTachoInMongoDB(request CreateTachoRequest) (int, error) {
 	collection, err := config.GetMongoCollection("bins")
 	if err != nil {
-		return fmt.Errorf("error getting MongoDB collection: %w", err)
+		return 0, fmt.Errorf("error getting MongoDB collection: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Buscar el máximo ID existente
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		return 0, fmt.Errorf("error finding bins: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	maxID := 0
+	for cursor.Next(ctx) {
+		var bin BinMongo
+		if cursor.Decode(&bin) == nil && bin.ID > maxID {
+			maxID = bin.ID
+		}
+	}
+
+	nextID := maxID + 1
+
 	// Crear documento para MongoDB
 	binDoc := bson.M{
-		"id":           request.MongoID,
+		"id":           nextID,
 		"lat":          request.Latitude,
 		"lon":          request.Longitude,
 		"neighborhood": request.Neighborhood,
@@ -124,10 +141,10 @@ func createTachoInMongoDB(request CreateTachoRequest) error {
 
 	_, err = collection.InsertOne(ctx, binDoc)
 	if err != nil {
-		return fmt.Errorf("error inserting bin: %w", err)
+		return 0, fmt.Errorf("error inserting bin: %w", err)
 	}
 
-	return nil
+	return nextID, nil
 }
 
 // deleteTachoFromMongoDB elimina un tacho de MongoDB por su ID
@@ -209,4 +226,69 @@ func GetDepotByIDFromMongoDB(depotID int) (*DepotMongo, error) {
 	}
 
 	return &depot, nil
+}
+
+// createDepotInMongoDB crea un depot en MongoDB y retorna su ID
+func createDepotInMongoDB(lat, lon float64, neighborhood int) (int, error) {
+	collection, err := config.GetMongoCollection("depot")
+	if err != nil {
+		return 0, fmt.Errorf("error getting MongoDB collection: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Buscar el máximo ID existente
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		return 0, fmt.Errorf("error finding depots: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	maxID := 0
+	for cursor.Next(ctx) {
+		var depot DepotMongo
+		if cursor.Decode(&depot) == nil && depot.ID > maxID {
+			maxID = depot.ID
+		}
+	}
+
+	nextID := maxID + 1
+
+	// Crear documento para MongoDB
+	depotDoc := bson.M{
+		"id":           nextID,
+		"lat":          lat,
+		"lon":          lon,
+		"neighborhood": neighborhood,
+	}
+
+	_, err = collection.InsertOne(ctx, depotDoc)
+	if err != nil {
+		return 0, fmt.Errorf("error inserting depot: %w", err)
+	}
+
+	return nextID, nil
+}
+
+// deleteDepotFromMongoDB elimina un depot de MongoDB por su ID
+func deleteDepotFromMongoDB(mongoID int) error {
+	collection, err := config.GetMongoCollection("depot")
+	if err != nil {
+		return fmt.Errorf("error getting MongoDB collection: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, err := collection.DeleteOne(ctx, bson.M{"id": mongoID})
+	if err != nil {
+		return fmt.Errorf("error deleting depot: %w", err)
+	}
+
+	if result.DeletedCount == 0 {
+		return fmt.Errorf("no se encontró el depot con id %d", mongoID)
+	}
+
+	return nil
 }

@@ -113,3 +113,39 @@ func GetAllTachosHandler(c *gin.Context) {
 		"total":  len(tachos),
 	})
 }
+
+// GetTachoByIDHandler obtiene un tacho específico por ID con todas sus características
+// @Summary Obtener un tacho por ID
+// @Description Devuelve un tacho específico con todas sus características, coordenadas y estado
+// @Tags Tachos
+// @Accept json
+// @Produce json
+// @Param id path int true "ID del tacho"
+// @Success 200 {object} services.TachoCompleto "Tacho encontrado"
+// @Failure 400 {object} map[string]string "ID inválido"
+// @Failure 404 {object} map[string]string "Tacho no encontrado"
+// @Failure 500 {object} map[string]string "Error interno del servidor"
+// @Router /tachos/{id} [get]
+func GetTachoByIDHandler(c *gin.Context) {
+	// Obtener el ID del parámetro de la URL
+	idStr := c.Param("id")
+
+	var tachoID int
+	if _, err := fmt.Sscanf(idStr, "%d", &tachoID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido, debe ser un número"})
+		return
+	}
+
+	// Obtener el tacho por ID
+	tacho, err := services.GetTachoByID(tachoID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Tacho con ID %d no encontrado", tachoID)})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tacho)
+}

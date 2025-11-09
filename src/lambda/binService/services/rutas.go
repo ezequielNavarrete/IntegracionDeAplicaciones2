@@ -19,15 +19,14 @@ type Point struct {
 // CreateTachoRequest representa la estructura de datos para crear un tacho
 type CreateTachoRequest struct {
 	// Datos para MySQL
-	IdTipo    int     `json:"id_tipo"`
-	IdEstado  int     `json:"id_estado"`
-	Capacidad float64 `json:"capacidad"`
+	IdTipo    int     `json:"id_tipo" binding:"required"`
+	IdEstado  int     `json:"id_estado" binding:"required"`
+	Capacidad float64 `json:"capacidad" binding:"required"`
 
-	// Datos para MongoDB (id, lat, lon, neighborhood)
-	MongoID      int     `json:"id"`           // ID que se guardará en MongoDB
-	Neighborhood int     `json:"neighborhood"` // Número de barrio
-	Latitude     float64 `json:"lat"`
-	Longitude    float64 `json:"lon"`
+	// Datos para MongoDB (lat, lon, neighborhood)
+	Neighborhood int     `json:"neighborhood" binding:"required"` // Número de barrio
+	Latitude     float64 `json:"lat" binding:"required"`
+	Longitude    float64 `json:"lon" binding:"required"`
 }
 
 // CreateTachoResponse representa la respuesta al crear un tacho
@@ -149,24 +148,24 @@ func GetPersonaByKey(personaKey string) (map[string]interface{}, error) {
 
 // CreateTacho crea un tacho en MySQL y MongoDB
 func CreateTacho(request CreateTachoRequest) (*CreateTachoResponse, error) {
-	// Primero crear en MongoDB
-	err := createTachoInMongoDB(request)
+	// Primero crear en MongoDB y obtener el ID generado
+	mongoID, err := createTachoInMongoDB(request)
 	if err != nil {
 		return nil, fmt.Errorf("error creando tacho en MongoDB: %v", err)
 	}
 
 	// Luego crear en MySQL usando el MongoID
-	tachoID, err := createTachoInMySQL(request, request.MongoID)
+	tachoID, err := createTachoInMySQL(request, mongoID)
 	if err != nil {
 		// Si falla MySQL, intentar limpiar MongoDB (rollback)
-		// TODO: Implementar rollback en MongoDB si es necesario
+		_ = deleteTachoFromMongoDB(mongoID)
 		return nil, fmt.Errorf("error creando tacho en MySQL: %v", err)
 	}
 
 	return &CreateTachoResponse{
 		Message: "Tacho creado exitosamente",
 		TachoID: tachoID,
-		MongoID: request.MongoID,
+		MongoID: mongoID,
 	}, nil
 }
 
