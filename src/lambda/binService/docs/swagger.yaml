@@ -1351,47 +1351,6 @@ paths:
       tags:
       - Rutas
   /tachos:
-    delete:
-      consumes:
-      - application/json
-      description: Elimina un tacho tanto de MySQL como de MongoDB usando el ID de
-        MongoDB
-      parameters:
-      - description: ID del tacho en MongoDB
-        in: query
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Tacho eliminado exitosamente
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Parámetros inválidos
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Tacho no encontrado en ninguna base
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Error interno del servidor
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Eliminar un tacho
-      tags:
-      - Tachos
     get:
       consumes:
       - application/json
@@ -1496,6 +1455,47 @@ paths:
       tags:
       - Tachos
   /tachos/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina un tacho (y sus características) de MySQL y MongoDB usando
+        el ID de MySQL
+      parameters:
+      - description: ID del tacho en MySQL
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tacho eliminado exitosamente
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Parámetros inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Tacho no encontrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar un tacho
+      tags:
+      - Tachos
     get:
       consumes:
       - application/json

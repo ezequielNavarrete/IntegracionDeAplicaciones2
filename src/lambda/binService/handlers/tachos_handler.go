@@ -46,39 +46,38 @@ func CreateTachoHandler(c *gin.Context) {
 
 // DeleteTachoHandler elimina un tacho de MySQL y MongoDB
 // @Summary Eliminar un tacho
-// @Description Elimina un tacho tanto de MySQL como de MongoDB usando el ID de MongoDB
+// @Description Elimina un tacho (y sus características) de MySQL y MongoDB usando el ID de MySQL
 // @Tags Tachos
 // @Accept json
 // @Produce json
-// @Param id query int true "ID del tacho en MongoDB"
+// @Param id path int true "ID del tacho en MySQL"
 // @Success 200 {object} map[string]string "Tacho eliminado exitosamente"
 // @Failure 400 {object} map[string]string "Parámetros inválidos"
-// @Failure 404 {object} map[string]string "Tacho no encontrado en ninguna base"
+// @Failure 404 {object} map[string]string "Tacho no encontrado"
 // @Failure 500 {object} map[string]string "Error interno del servidor"
-// @Router /tachos [delete]
+// @Router /tachos/{id} [delete]
 func DeleteTachoHandler(c *gin.Context) {
-	// Obtener ID de MongoDB del query parameter
-	mongoIDStr := c.Query("id")
+	// Obtener ID de MySQL del parámetro de ruta
+	idStr := c.Param("id")
 
-	if mongoIDStr == "" {
+	if idStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Debe proporcionar el 'id' del tacho en MongoDB",
-			"example": "?id=50006",
+			"error": "Debe proporcionar el 'id' del tacho",
 		})
 		return
 	}
 
-	var mongoID int
-	if _, err := fmt.Sscanf(mongoIDStr, "%d", &mongoID); err != nil {
+	var tachoID int
+	if _, err := fmt.Sscanf(idStr, "%d", &tachoID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "El ID debe ser un número válido"})
 		return
 	}
 
 	// Eliminar el tacho usando el servicio
-	err := services.DeleteTacho(mongoID)
+	err := services.DeleteTacho(tachoID)
 	if err != nil {
-		if strings.Contains(err.Error(), "no se pudo eliminar de ninguna base de datos") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Tacho no encontrado en ninguna base de datos"})
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Tacho con ID %d no encontrado", tachoID)})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -86,8 +85,8 @@ func DeleteTachoHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Tacho eliminado exitosamente",
-		"id":      mongoID,
+		"message": "Tacho eliminado exitosamente (incluyendo características)",
+		"id":      tachoID,
 	})
 }
 

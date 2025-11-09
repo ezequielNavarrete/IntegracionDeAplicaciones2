@@ -169,28 +169,52 @@ func CreateTacho(request CreateTachoRequest) (*CreateTachoResponse, error) {
 	}, nil
 }
 
-// DeleteTacho elimina un tacho de MySQL y MongoDB usando el ID de MongoDB
-func DeleteTacho(mongoID int) error {
+// DeleteTacho elimina un tacho de MySQL y MongoDB usando el ID de MySQL
+func DeleteTacho(tachoID int) error {
+	if config.DB == nil {
+		return fmt.Errorf("database connection not available")
+	}
+
+	// 1. Obtener el id_mongo desde MySQL
+	var result struct {
+		IDMongo int `gorm:"column:id_mongo"`
+	}
+	queryResult := config.DB.Raw("SELECT id_mongo FROM Tacho WHERE id_tacho = ?", tachoID).Scan(&result)
+	if queryResult.Error() != nil {
+		return fmt.Errorf("error finding tacho: %v", queryResult.Error())
+	}
+	if result.IDMongo == 0 {
+		return fmt.Errorf("tacho not found")
+	}
+
+	mongoID := result.IDMongo
+
 	var errorsFound []string
 
-	// Intentar eliminar de MySQL
-	err := deleteTachoFromMySQL(0, mongoID)
+	// 2. Eliminar relaciones de características en Lista_caracteristica_tacho
+	deleteCaracResult := config.DB.Exec("DELETE FROM Lista_caracteristica_tacho WHERE id_tacho = ?", tachoID)
+	if deleteCaracResult.Error() != nil {
+		errorsFound = append(errorsFound, fmt.Sprintf("Error eliminando características: %v", deleteCaracResult.Error()))
+	}
+
+	// 3. Eliminar de MySQL
+	err := deleteTachoFromMySQL(tachoID, 0)
 	if err != nil {
 		errorsFound = append(errorsFound, fmt.Sprintf("MySQL: %v", err))
 	}
 
-	// Intentar eliminar de MongoDB
+	// 4. Eliminar de MongoDB
 	err = deleteTachoFromMongoDB(mongoID)
 	if err != nil {
 		errorsFound = append(errorsFound, fmt.Sprintf("MongoDB: %v", err))
 	}
 
-	// Si ambos fallaron, retornar error
-	if len(errorsFound) == 2 {
-		return fmt.Errorf("no se pudo eliminar de ninguna base de datos: %s", strings.Join(errorsFound, "; "))
+	// Si hubo errores en MySQL o MongoDB, retornar error
+	if len(errorsFound) >= 2 {
+		return fmt.Errorf("errores al eliminar tacho: %s", strings.Join(errorsFound, "; "))
 	}
 
-	// Si al menos uno funcionó, es éxito (aunque logueamos warnings)
+	// Si solo hubo error en características pero se eliminó el tacho, es aceptable (warning)
 	if len(errorsFound) == 1 {
 		fmt.Printf("Warning durante eliminación: %s\n", errorsFound[0])
 	}
