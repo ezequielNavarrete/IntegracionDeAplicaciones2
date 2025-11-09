@@ -35,21 +35,31 @@ func SetupRoutes(r *gin.Engine) {
 	r.DELETE("/personas/:id", handlers.DeletePersonaHandler)           // Eliminar persona individual
 
 	// Endpoints para tachos
-	r.GET("/tachos", handlers.GetAllTachosHandler) // Obtener todos los tachos
-	r.POST("/tachos", handlers.CreateTachoHandler)
-	r.DELETE("/tachos", handlers.DeleteTachoHandler) // Cambiado para usar query parameters
+	r.GET("/tachos", handlers.GetAllTachosHandler)     // Obtener todos los tachos
+	r.GET("/tachos/:id", handlers.GetTachoByIDHandler) // Obtener un tacho por ID
+	r.POST("/tachos", handlers.CreateTachoHandler)     // Crear nuevo tacho
+	r.DELETE("/tachos", handlers.DeleteTachoHandler)   // Eliminar tacho (por query parameter)
 	r.PUT("/tachos/:id_tacho/capacidad", handlers.UpdateCapacidadTachoHandler)
 	r.PUT("/tachos/:id_tacho/prioridad", handlers.UpdatePrioridadTachoHandler)
 
 	// Endpoints para camiones
-	r.GET("/camiones", handlers.GetAllCamionesHandler)    // Obtener todos los camiones (MySQL)
-	r.GET("/camiones/:id", handlers.GetCamionByIDHandler) // Obtener camión por ID (MySQL)
-	r.POST("/camiones", handlers.CreateCamionHandler)     // Crear camión (Redis temporal)
+	r.GET("/camiones", handlers.GetAllCamionesHandler)      // Obtener todos los camiones (MySQL)
+	r.GET("/camiones/:id", handlers.GetCamionByIDHandler)   // Obtener camión por ID (MySQL)
+	r.POST("/camiones", handlers.CreateCamionHandler)       // Crear camión (Redis temporal)
 	r.DELETE("/camiones/:id", handlers.DeleteCamionHandler) // Eliminar camión (Redis temporal)
 
 	// Endpoints para centros
-	r.GET("/centros", handlers.GetAllCentrosHandler)     // Obtener todos los centros con JOIN MySQL + Neo4j
-	r.GET("/centros/:id", handlers.GetCentroByIDHandler) // Obtener centro por ID con JOIN MySQL + Neo4j
+	r.GET("/centros", handlers.GetAllCentrosHandler)     // Obtener todos los centros con JOIN MySQL + MongoDB
+	r.GET("/centros/:id", handlers.GetCentroByIDHandler) // Obtener centro por ID con JOIN MySQL + MongoDB
+	r.POST("/centros", handlers.CreateCentroHandler)     // Crear nuevo centro en MySQL + MongoDB
+	r.DELETE("/centros", handlers.DeleteCentroHandler)   // Eliminar centro de MySQL + MongoDB
+
+	// Endpoints para reclamos
+	r.GET("/reclamos", handlers.GetAllReclamosHandler)         // Obtener todos los reclamos
+	r.GET("/reclamos/:id", handlers.GetReclamoByIDHandler)     // Obtener un reclamo por ID
+	r.POST("/reclamos", handlers.CreateReclamoHandler)         // Crear nuevo reclamo
+	r.DELETE("/reclamos/:id", handlers.DeleteReclamoHandler)   // Eliminar reclamo
+	r.PUT("/reclamos/:id/estado", handlers.UpdateReclamoEstadoHandler) // Actualizar estado del reclamo
 
 	// Endpoints para cron jobs
 	r.POST("/cron/update-routes", handlers.UpdateAllRoutesHandler) // Actualizar todas las rutas en caché

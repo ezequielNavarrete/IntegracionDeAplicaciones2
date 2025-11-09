@@ -4,105 +4,58 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
-	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
-	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/models"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-// Request para actualizar prioridad
-type UpdatePrioridadRequest struct {
-	Prioridad int `json:"prioridad" example:"2"`
-}
-
-type UpdatePrioridadResponse struct {
-	Message   string `json:"message"`
-	IDTacho   int64  `json:"id_tacho"`
-	IDNeo     string `json:"id_neo"`
-	Prioridad int    `json:"prioridad"`
-}
-
-// UpdatePrioridadTachoHandler actualiza la prioridad de un tacho
-// @Summary Actualizar prioridad del tacho
-// @Description Actualiza el campo prioridad de un tacho en Neo4j
+// UpdatePrioridadTachoHandler actualiza las características de un tacho
+// @Summary Actualizar características del tacho
+// @Description Actualiza una o más características de un tacho con nuevas prioridades (0=Nulo, 1=Bajo, 2=Medio, 3=Alto, 4=Urgente)
 // @Tags Tachos
 // @Accept json
 // @Produce json
 // @Param id_tacho path int true "ID del tacho"
-// @Param prioridad body UpdatePrioridadRequest true "Nueva prioridad del tacho"
-// @Success 200 {object} UpdatePrioridadResponse "Prioridad actualizada correctamente"
+// @Param caracteristicas body services.UpdateTachoCaracteristicasRequest true "Características a actualizar"
+// @Success 200 {object} map[string]interface{} "Características actualizadas correctamente"
 // @Failure 400 {object} map[string]string "Datos inválidos"
+// @Failure 404 {object} map[string]string "Tacho no encontrado"
 // @Failure 500 {object} map[string]string "Error interno"
 // @Router /tachos/{id_tacho}/prioridad [put]
 func UpdatePrioridadTachoHandler(c *gin.Context) {
 	// ID en URL
 	idStr := c.Param("id_tacho")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
 		return
 	}
 
 	// Body
-	var body UpdatePrioridadRequest
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
+	var request services.UpdateTachoCaracteristicasRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos: " + err.Error()})
 		return
 	}
 
-	// Obtener id_neo desde MySQL/GORM (usa config.DB global)
-	var tacho models.Tacho
-	res := config.DB.WithContext(c).First(&tacho, id)
-	if err := res.Error(); err != nil {
-		if err == gorm.ErrRecordNotFound {
+	// Validar que haya al menos una característica
+	if len(request.Caracteristicas) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Debe proporcionar al menos una característica"})
+		return
+	}
+
+	// Actualizar características
+	if err := services.UpdateTachoCaracteristicas(id, request); err != nil {
+		if err.Error() == "tacho not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Tacho no encontrado"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al buscar tacho"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Obtener sesión (NO cerrar driver). GetNeo4jSession() devuelve una session con contexto
-	session, err := config.GetNeo4jSession()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al conectar con Neo4j"})
-		return
-	}
-	// cerrar sesión al terminar la request
-	defer session.Close(c.Request.Context())
-
-	// Ejecutar update usando el contexto de la request
-	ctx := c.Request.Context()
-	_, err = session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := `
-			MATCH (t:Tacho {id: $id})
-			SET t.prioridad = $prioridad
-			RETURN t.id AS id
-		`
-		// usar tx.Run con el mismo ctx
-		_, err := tx.Run(ctx, query, map[string]any{
-			"id":        tacho.IDNeo,
-			"prioridad": body.Prioridad,
-		})
-		return nil, err
-	})
-	if err != nil {
-		// log opcional: log.Printf("neo update error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar prioridad en Neo4j"})
-		return
-	}
-
-	// Actualizar métricas de Prometheus
-	// Nota: Necesitarías obtener la zona del tacho para las etiquetas completas
-	middleware.UpdateTachoPrioridad(idStr, "zona_desconocida", float64(body.Prioridad))
-
-	c.JSON(http.StatusOK, UpdatePrioridadResponse{
-		Message:   "Prioridad actualizada correctamente",
-		IDTacho:   tacho.IDTacho,
-		IDNeo:     tacho.IDNeo,
-		Prioridad: body.Prioridad,
+	c.JSON(http.StatusOK, gin.H{
+		"message":               "Características actualizadas correctamente",
+		"id_tacho":              id,
+		"caracteristicas_updated": len(request.Caracteristicas),
 	})
 }

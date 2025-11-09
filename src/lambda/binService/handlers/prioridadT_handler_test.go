@@ -2,87 +2,73 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
-	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
-	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/models"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
-// mock Tachos (reemplaza MySQL/GORM)
-var mockTachos = map[int64]models.Tacho{
-	1: {IDTacho: 1, IDNeo: "neo1"},
-}
-
-// Handler de test que inyecta mocks
-func UpdatePrioridadTachoHandlerTest(c *gin.Context) {
-	// ID del tacho
-	idStr := c.Param("id_tacho")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
-		return
-	}
-
-	// Body
-	var body UpdatePrioridadRequest
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos inválidos"})
-		return
-	}
-
-	// Mock GORM
-	tacho, ok := mockTachos[id]
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Tacho no encontrado"})
-		return
-	}
-
-	// Mock Neo4j usando MockNeoSession
-	mockSession := MockNeoSession{}
-	_, err = mockSession.ExecuteWrite(context.Background(), func(tx config.ManagedTransaction) (any, error) {
-		// simulamos el update, no hacemos nada
-		return nil, nil
-	})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar prioridad en Neo4j"})
-		return
-	}
-
-	c.JSON(http.StatusOK, UpdatePrioridadResponse{
-		Message:   "Prioridad actualizada correctamente",
-		IDTacho:   tacho.IDTacho,
-		IDNeo:     tacho.IDNeo,
-		Prioridad: body.Prioridad,
-	})
-}
-
-func TestUpdatePrioridadTachoHandler_WithMocks(t *testing.T) {
+// Test simplificado para la nueva funcionalidad de características
+func TestUpdatePrioridadTachoHandler_NewStructure(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
-	router.PUT("/tachos/:id_tacho/prioridad", UpdatePrioridadTachoHandlerTest)
+	router.PUT("/tachos/:id_tacho/prioridad", UpdatePrioridadTachoHandler)
 
 	tests := []struct {
-		name       string
-		id         string
-		prioridad  int
-		wantCode   int
-		wantErrMsg string
+		name     string
+		id       string
+		request  services.UpdateTachoCaracteristicasRequest
+		wantCode int
 	}{
-		{"Happy path", "1", 2, 200, ""},
-		{"ID inválido", "abc", 2, 400, "ID inválido"},
-		{"Tacho no encontrado", "999", 2, 404, "Tacho no encontrado"},
+		{
+			"Happy path - actualizar una característica",
+			"1",
+			services.UpdateTachoCaracteristicasRequest{
+				Caracteristicas: []services.UpdateCaracteristicaRequest{
+					{Nombre: "Humedad", Prioridad: 3},
+				},
+			},
+			200,
+		},
+		{
+			"Happy path - actualizar múltiples características",
+			"1",
+			services.UpdateTachoCaracteristicasRequest{
+				Caracteristicas: []services.UpdateCaracteristicaRequest{
+					{Nombre: "Humedad", Prioridad: 4},
+					{Nombre: "Olor", Prioridad: 2},
+					{Nombre: "Llenado", Prioridad: 3},
+				},
+			},
+			200,
+		},
+		{
+			"ID inválido",
+			"abc",
+			services.UpdateTachoCaracteristicasRequest{
+				Caracteristicas: []services.UpdateCaracteristicaRequest{
+					{Nombre: "Humedad", Prioridad: 2},
+				},
+			},
+			400,
+		},
+		{
+			"Sin características",
+			"1",
+			services.UpdateTachoCaracteristicasRequest{
+				Caracteristicas: []services.UpdateCaracteristicaRequest{},
+			},
+			400,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reqBody, _ := json.Marshal(UpdatePrioridadRequest{Prioridad: tt.prioridad})
+			reqBody, _ := json.Marshal(tt.request)
 			req, _ := http.NewRequest(http.MethodPut, "/tachos/"+tt.id+"/prioridad", bytes.NewBuffer(reqBody))
 			req.Header.Set("Content-Type", "application/json")
 
@@ -90,19 +76,6 @@ func TestUpdatePrioridadTachoHandler_WithMocks(t *testing.T) {
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.wantCode, w.Code)
-
-			if tt.wantErrMsg != "" {
-				var resp map[string]string
-				json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.Equal(t, tt.wantErrMsg, resp["error"])
-			} else {
-				var resp UpdatePrioridadResponse
-				json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.Equal(t, tt.id, strconv.FormatInt(resp.IDTacho, 10))
-				assert.Equal(t, mockTachos[resp.IDTacho].IDNeo, resp.IDNeo)
-				assert.Equal(t, tt.prioridad, resp.Prioridad)
-				assert.Equal(t, "Prioridad actualizada correctamente", resp.Message)
-			}
 		})
 	}
 }

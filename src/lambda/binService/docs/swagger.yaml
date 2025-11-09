@@ -80,23 +80,6 @@ definitions:
         example: Capacidad actualizada correctamente
         type: string
     type: object
-  handlers.UpdatePrioridadRequest:
-    properties:
-      prioridad:
-        example: 2
-        type: integer
-    type: object
-  handlers.UpdatePrioridadResponse:
-    properties:
-      id_neo:
-        type: string
-      id_tacho:
-        type: integer
-      message:
-        type: string
-      prioridad:
-        type: integer
-    type: object
   services.Camion:
     properties:
       capacidad:
@@ -213,6 +196,31 @@ definitions:
     - matricula
     - modelo
     type: object
+  services.CreateCentroRequest:
+    properties:
+      id_tipo:
+        type: integer
+      latitud:
+        type: number
+      longitud:
+        type: number
+      neighborhood:
+        type: integer
+    required:
+    - id_tipo
+    - latitud
+    - longitud
+    - neighborhood
+    type: object
+  services.CreateCentroResponse:
+    properties:
+      id_centro:
+        type: integer
+      id_mongo:
+        type: integer
+      message:
+        type: string
+    type: object
   services.CreatePersonaRequest:
     properties:
       email:
@@ -236,13 +244,47 @@ definitions:
     - route_number
     - truck_id
     type: object
+  services.CreateReclamoRequest:
+    properties:
+      descripcion:
+        type: string
+      direccion:
+        type: string
+      estado:
+        type: string
+      id_persona:
+        type: integer
+      id_subcategoria:
+        type: integer
+      lat:
+        type: number
+      lng:
+        type: number
+      prioridad:
+        type: string
+      titulo:
+        type: string
+    required:
+    - descripcion
+    - direccion
+    - id_persona
+    - lat
+    - lng
+    - titulo
+    type: object
+  services.CreateReclamoResponse:
+    properties:
+      fecha:
+        type: string
+      id_reclamo:
+        type: integer
+      message:
+        type: string
+    type: object
   services.CreateTachoRequest:
     properties:
       capacidad:
         type: number
-      id:
-        description: Datos para MongoDB (id, lat, lon, neighborhood)
-        type: integer
       id_estado:
         type: integer
       id_tipo:
@@ -253,8 +295,15 @@ definitions:
       lon:
         type: number
       neighborhood:
-        description: Número de barrio
+        description: Datos para MongoDB (lat, lon, neighborhood)
         type: integer
+    required:
+    - capacidad
+    - id_estado
+    - id_tipo
+    - lat
+    - lon
+    - neighborhood
     type: object
   services.CreateTachoResponse:
     properties:
@@ -288,6 +337,31 @@ definitions:
         type: integer
       truck_id:
         type: integer
+    type: object
+  services.Reclamo:
+    properties:
+      descripcion:
+        type: string
+      direccion:
+        type: string
+      estado:
+        type: string
+      fecha:
+        type: string
+      id_persona:
+        type: integer
+      id_reclamo:
+        type: integer
+      id_subcategoria:
+        type: integer
+      lat:
+        type: number
+      lng:
+        type: number
+      prioridad:
+        type: string
+      titulo:
+        type: string
     type: object
   services.SimplifiedRoute:
     properties:
@@ -330,6 +404,22 @@ definitions:
         type: number
       neighborhood:
         type: integer
+    type: object
+  services.UpdateCaracteristicaRequest:
+    properties:
+      nombre:
+        description: '"Humedad", "Olor", "Llenado", "Tipo de residuo", "Temperatura"'
+        type: string
+      prioridad:
+        description: '0-4: Nulo, Bajo, Medio, Alto, Urgente'
+        type: integer
+    type: object
+  services.UpdateTachoCaracteristicasRequest:
+    properties:
+      caracteristicas:
+        items:
+          $ref: '#/definitions/services.UpdateCaracteristicaRequest'
+        type: array
     type: object
 info:
   contact:
@@ -478,6 +568,49 @@ paths:
       tags:
       - Camiones
   /centros:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina un centro por su ID o por su ID de MongoDB
+      parameters:
+      - description: ID del centro en MySQL
+        in: query
+        name: id_centro
+        type: integer
+      - description: ID del centro en MongoDB
+        in: query
+        name: id_mongo
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Centro eliminado exitosamente
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Parámetros inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Centro no encontrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar un centro
+      tags:
+      - Centros
     get:
       description: Obtiene una lista de todos los centros con información de tipo
         (MySQL) y datos adicionales como nombre, barrio, dirección, coordenadas (Neo4j)
@@ -495,6 +628,40 @@ paths:
               type: string
             type: object
       summary: Obtener todos los centros
+      tags:
+      - Centros
+    post:
+      consumes:
+      - application/json
+      description: Crea un centro con información de tipo (MySQL) y datos espaciales
+        (MongoDB)
+      parameters:
+      - description: Datos del centro a crear
+        in: body
+        name: centro
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateCentroRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Centro creado exitosamente
+          schema:
+            $ref: '#/definitions/services.CreateCentroResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Crear un nuevo centro
       tags:
       - Centros
   /centros/{id}:
@@ -810,6 +977,190 @@ paths:
       summary: Regenerar personas desde rutas
       tags:
       - Personas
+  /reclamos:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve una lista de todos los reclamos
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de reclamos
+          schema:
+            items:
+              $ref: '#/definitions/services.Reclamo'
+            type: array
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener todos los reclamos
+      tags:
+      - Reclamos
+    post:
+      consumes:
+      - application/json
+      description: Crea un reclamo con la información proporcionada
+      parameters:
+      - description: Datos del reclamo
+        in: body
+        name: reclamo
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateReclamoRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Reclamo creado exitosamente
+          schema:
+            $ref: '#/definitions/services.CreateReclamoResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Crear un nuevo reclamo
+      tags:
+      - Reclamos
+  /reclamos/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Elimina un reclamo por su ID
+      parameters:
+      - description: ID del reclamo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reclamo eliminado exitosamente
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: ID inválido
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Reclamo no encontrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Eliminar un reclamo
+      tags:
+      - Reclamos
+    get:
+      consumes:
+      - application/json
+      description: Devuelve un reclamo específico
+      parameters:
+      - description: ID del reclamo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reclamo encontrado
+          schema:
+            $ref: '#/definitions/services.Reclamo'
+        "400":
+          description: ID inválido
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Reclamo no encontrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener un reclamo por ID
+      tags:
+      - Reclamos
+  /reclamos/{id}/estado:
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el estado de un reclamo específico
+      parameters:
+      - description: ID del reclamo
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Nuevo estado
+        in: body
+        name: estado
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Estado actualizado exitosamente
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Datos inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Reclamo no encontrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Actualizar estado de un reclamo
+      tags:
+      - Reclamos
   /routes/neighborhood/{neighborhood}:
     get:
       consumes:
@@ -1101,28 +1452,36 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza el campo prioridad de un tacho en Neo4j
+      description: Actualiza una o más características de un tacho con nuevas prioridades
+        (0=Nulo, 1=Bajo, 2=Medio, 3=Alto, 4=Urgente)
       parameters:
       - description: ID del tacho
         in: path
         name: id_tacho
         required: true
         type: integer
-      - description: Nueva prioridad del tacho
+      - description: Características a actualizar
         in: body
-        name: prioridad
+        name: caracteristicas
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdatePrioridadRequest'
+          $ref: '#/definitions/services.UpdateTachoCaracteristicasRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Prioridad actualizada correctamente
+          description: Características actualizadas correctamente
           schema:
-            $ref: '#/definitions/handlers.UpdatePrioridadResponse'
+            additionalProperties: true
+            type: object
         "400":
           description: Datos inválidos
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Tacho no encontrado
           schema:
             additionalProperties:
               type: string
@@ -1133,7 +1492,47 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Actualizar prioridad del tacho
+      summary: Actualizar características del tacho
+      tags:
+      - Tachos
+  /tachos/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Devuelve un tacho específico con todas sus características, coordenadas
+        y estado
+      parameters:
+      - description: ID del tacho
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tacho encontrado
+          schema:
+            $ref: '#/definitions/services.TachoCompleto'
+        "400":
+          description: ID inválido
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Tacho no encontrado
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Error interno del servidor
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Obtener un tacho por ID
       tags:
       - Tachos
   /tachos/{id}/capacidad:

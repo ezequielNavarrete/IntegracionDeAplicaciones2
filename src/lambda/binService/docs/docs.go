@@ -243,6 +243,121 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "description": "Crea un centro con información de tipo (MySQL) y datos espaciales (MongoDB)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Centros"
+                ],
+                "summary": "Crear un nuevo centro",
+                "parameters": [
+                    {
+                        "description": "Datos del centro a crear",
+                        "name": "centro",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateCentroRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Centro creado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateCentroResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Elimina un centro por su ID o por su ID de MongoDB",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Centros"
+                ],
+                "summary": "Eliminar un centro",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del centro en MySQL",
+                        "name": "id_centro",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID del centro en MongoDB",
+                        "name": "id_mongo",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Centro eliminado exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Parámetros inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Centro no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/centros/{id}": {
@@ -711,6 +826,284 @@ const docTemplate = `{
                 }
             }
         },
+        "/reclamos": {
+            "get": {
+                "description": "Devuelve una lista de todos los reclamos",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reclamos"
+                ],
+                "summary": "Obtener todos los reclamos",
+                "responses": {
+                    "200": {
+                        "description": "Lista de reclamos",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/services.Reclamo"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Crea un reclamo con la información proporcionada",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reclamos"
+                ],
+                "summary": "Crear un nuevo reclamo",
+                "parameters": [
+                    {
+                        "description": "Datos del reclamo",
+                        "name": "reclamo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateReclamoRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Reclamo creado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/services.CreateReclamoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reclamos/{id}": {
+            "get": {
+                "description": "Devuelve un reclamo específico",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reclamos"
+                ],
+                "summary": "Obtener un reclamo por ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del reclamo",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reclamo encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/services.Reclamo"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Reclamo no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Elimina un reclamo por su ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reclamos"
+                ],
+                "summary": "Eliminar un reclamo",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del reclamo",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reclamo eliminado exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Reclamo no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reclamos/{id}/estado": {
+            "put": {
+                "description": "Actualiza el estado de un reclamo específico",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reclamos"
+                ],
+                "summary": "Actualizar estado de un reclamo",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del reclamo",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Nuevo estado",
+                        "name": "estado",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Estado actualizado exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Reclamo no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/routes/neighborhood/{neighborhood}": {
             "get": {
                 "description": "Devuelve todas las rutas simplificadas guardadas en caché para un barrio específico",
@@ -1138,7 +1531,7 @@ const docTemplate = `{
         },
         "/tachos/{id_tacho}/prioridad": {
             "put": {
-                "description": "Actualiza el campo prioridad de un tacho en Neo4j",
+                "description": "Actualiza una o más características de un tacho con nuevas prioridades (0=Nulo, 1=Bajo, 2=Medio, 3=Alto, 4=Urgente)",
                 "consumes": [
                     "application/json"
                 ],
@@ -1148,7 +1541,7 @@ const docTemplate = `{
                 "tags": [
                     "Tachos"
                 ],
-                "summary": "Actualizar prioridad del tacho",
+                "summary": "Actualizar características del tacho",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1158,20 +1551,21 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Nueva prioridad del tacho",
-                        "name": "prioridad",
+                        "description": "Características a actualizar",
+                        "name": "caracteristicas",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.UpdatePrioridadRequest"
+                            "$ref": "#/definitions/services.UpdateTachoCaracteristicasRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Prioridad actualizada correctamente",
+                        "description": "Características actualizadas correctamente",
                         "schema": {
-                            "$ref": "#/definitions/handlers.UpdatePrioridadResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -1183,8 +1577,76 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "404": {
+                        "description": "Tacho no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Error interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tachos/{id}": {
+            "get": {
+                "description": "Devuelve un tacho específico con todas sus características, coordenadas y estado",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tachos"
+                ],
+                "summary": "Obtener un tacho por ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID del tacho",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tacho encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/services.TachoCompleto"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tacho no encontrado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1733,32 +2195,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.UpdatePrioridadRequest": {
-            "type": "object",
-            "properties": {
-                "prioridad": {
-                    "type": "integer",
-                    "example": 2
-                }
-            }
-        },
-        "handlers.UpdatePrioridadResponse": {
-            "type": "object",
-            "properties": {
-                "id_neo": {
-                    "type": "string"
-                },
-                "id_tacho": {
-                    "type": "integer"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "prioridad": {
-                    "type": "integer"
-                }
-            }
-        },
         "services.Camion": {
             "type": "object",
             "properties": {
@@ -1928,6 +2364,43 @@ const docTemplate = `{
                 }
             }
         },
+        "services.CreateCentroRequest": {
+            "type": "object",
+            "required": [
+                "id_tipo",
+                "latitud",
+                "longitud",
+                "neighborhood"
+            ],
+            "properties": {
+                "id_tipo": {
+                    "type": "integer"
+                },
+                "latitud": {
+                    "type": "number"
+                },
+                "longitud": {
+                    "type": "number"
+                },
+                "neighborhood": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.CreateCentroResponse": {
+            "type": "object",
+            "properties": {
+                "id_centro": {
+                    "type": "integer"
+                },
+                "id_mongo": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "services.CreatePersonaRequest": {
             "type": "object",
             "required": [
@@ -1959,15 +2432,73 @@ const docTemplate = `{
                 }
             }
         },
+        "services.CreateReclamoRequest": {
+            "type": "object",
+            "required": [
+                "descripcion",
+                "direccion",
+                "id_persona",
+                "lat",
+                "lng",
+                "titulo"
+            ],
+            "properties": {
+                "descripcion": {
+                    "type": "string"
+                },
+                "direccion": {
+                    "type": "string"
+                },
+                "estado": {
+                    "type": "string"
+                },
+                "id_persona": {
+                    "type": "integer"
+                },
+                "id_subcategoria": {
+                    "type": "integer"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "prioridad": {
+                    "type": "string"
+                },
+                "titulo": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.CreateReclamoResponse": {
+            "type": "object",
+            "properties": {
+                "fecha": {
+                    "type": "string"
+                },
+                "id_reclamo": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "services.CreateTachoRequest": {
             "type": "object",
+            "required": [
+                "capacidad",
+                "id_estado",
+                "id_tipo",
+                "lat",
+                "lon",
+                "neighborhood"
+            ],
             "properties": {
                 "capacidad": {
                     "type": "number"
-                },
-                "id": {
-                    "description": "Datos para MongoDB (id, lat, lon, neighborhood)",
-                    "type": "integer"
                 },
                 "id_estado": {
                     "type": "integer"
@@ -1983,7 +2514,7 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "neighborhood": {
-                    "description": "Número de barrio",
+                    "description": "Datos para MongoDB (lat, lon, neighborhood)",
                     "type": "integer"
                 }
             }
@@ -2036,6 +2567,44 @@ const docTemplate = `{
                 },
                 "truck_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "services.Reclamo": {
+            "type": "object",
+            "properties": {
+                "descripcion": {
+                    "type": "string"
+                },
+                "direccion": {
+                    "type": "string"
+                },
+                "estado": {
+                    "type": "string"
+                },
+                "fecha": {
+                    "type": "string"
+                },
+                "id_persona": {
+                    "type": "integer"
+                },
+                "id_reclamo": {
+                    "type": "integer"
+                },
+                "id_subcategoria": {
+                    "type": "integer"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "prioridad": {
+                    "type": "string"
+                },
+                "titulo": {
+                    "type": "string"
                 }
             }
         },
@@ -2099,6 +2668,30 @@ const docTemplate = `{
                 },
                 "neighborhood": {
                     "type": "integer"
+                }
+            }
+        },
+        "services.UpdateCaracteristicaRequest": {
+            "type": "object",
+            "properties": {
+                "nombre": {
+                    "description": "\"Humedad\", \"Olor\", \"Llenado\", \"Tipo de residuo\", \"Temperatura\"",
+                    "type": "string"
+                },
+                "prioridad": {
+                    "description": "0-4: Nulo, Bajo, Medio, Alto, Urgente",
+                    "type": "integer"
+                }
+            }
+        },
+        "services.UpdateTachoCaracteristicasRequest": {
+            "type": "object",
+            "properties": {
+                "caracteristicas": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.UpdateCaracteristicaRequest"
+                    }
                 }
             }
         }
