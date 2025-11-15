@@ -53,17 +53,17 @@ func main() {
 	// Close Neo4j driver on app shutdown
 	defer config.CloseNeo4jDriver()
 
-	// 🔥 Inicializar cliente de eventos RabbitMQ
+	// Inicializar cliente de eventos RabbitMQ
 	eventClient, err := events.InitClient()
 	if err != nil {
-		log.Printf("⚠️  RabbitMQ no disponible: %v", err)
-		log.Printf("⚠️  La aplicación continuará sin eventos (degradación graciosa)")
+		log.Printf("⚠️ RabbitMQ no disponible: %v", err)
+		log.Printf("⚠️ La aplicación continuará sin eventos (degradación graciosa)")
 	} else {
 		defer eventClient.Close()
-		
+
 		// 🔥 Iniciar consumer de eventos en background
 		if err := events.StartConsumer(); err != nil {
-			log.Printf("⚠️  Consumer no pudo iniciarse: %v", err)
+			log.Printf("⚠️ Consumer no pudo iniciarse: %v", err)
 		}
 	}
 
