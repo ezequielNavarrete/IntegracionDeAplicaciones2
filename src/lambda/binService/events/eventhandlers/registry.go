@@ -77,7 +77,7 @@ func ProcessMessage(d amqp.Delivery) {
 	// Ejecutar el handler
 	if err := handler(d); err != nil {
 		log.Printf("❌ Error procesando mensaje [%s]: %v", d.RoutingKey, err)
-		
+
 		// Si es error de JSON inválido, descartar el mensaje (NO reencolar)
 		if _, ok := err.(*json.SyntaxError); ok {
 			log.Printf("🗑️  Mensaje descartado: JSON mal formado")
@@ -89,7 +89,7 @@ func ProcessMessage(d amqp.Delivery) {
 			d.Ack(false)
 			return
 		}
-		
+
 		// Para otros errores, reencolar
 		d.Nack(false, true)
 		return
