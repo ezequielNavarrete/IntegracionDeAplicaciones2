@@ -41,6 +41,14 @@ func CreateTachoHandler(c *gin.Context) {
 	// Incrementar contador de tachos para la zona (usando neighborhood)
 	middleware.UpdateTachoCapacidad(string(rune(response.TachoID)), string(rune(request.Neighborhood)), request.Capacidad)
 
+	// 🔥 Publicar evento de creación a RabbitMQ
+	go services.PublishTachoCreado(
+		response.TachoID,
+		request.Capacidad,
+		fmt.Sprintf("Barrio %d (Lat: %.6f, Lon: %.6f)", request.Neighborhood, request.Latitude, request.Longitude),
+		request.Neighborhood, // ZonaID = Neighborhood
+	)
+
 	c.JSON(http.StatusCreated, response)
 }
 
@@ -83,6 +91,9 @@ func DeleteTachoHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// 🔥 Publicar evento de eliminación a RabbitMQ
+	go services.PublishTachoEliminado(tachoID, "Eliminado por usuario")
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Tacho eliminado exitosamente (incluyendo características)",
