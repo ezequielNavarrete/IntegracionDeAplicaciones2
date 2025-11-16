@@ -1384,6 +1384,94 @@ const docTemplate = `{
                 }
             }
         },
+        "/schedule": {
+            "get": {
+                "description": "Devuelve los horarios de recolección por neighborhood y las fechas de actualización de rutas",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedule"
+                ],
+                "summary": "Obtener configuración de horarios de recolección",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.GlobalScheduleConfig"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedule/cron": {
+            "put": {
+                "description": "Actualiza cuándo se ejecuta el cron que calcula las rutas",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedule"
+                ],
+                "summary": "Actualizar horario del cron",
+                "parameters": [
+                    {
+                        "description": "Cron schedule",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.UpdateScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.GlobalScheduleConfig"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedule/neighborhood": {
+            "put": {
+                "description": "Actualiza las horas de inicio y fin de recolección para un neighborhood específico",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedule"
+                ],
+                "summary": "Actualizar horario de recolección de un neighborhood",
+                "parameters": [
+                    {
+                        "description": "Neighborhood schedule",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/services.UpdateNeighborhoodScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.GlobalScheduleConfig"
+                        }
+                    }
+                }
+            }
+        },
         "/tachos": {
             "get": {
                 "description": "Devuelve todos los tachos con neighborhood, latitud, longitud, estado y capacidad",
@@ -2533,6 +2621,37 @@ const docTemplate = `{
                 }
             }
         },
+        "services.GlobalScheduleConfig": {
+            "type": "object",
+            "properties": {
+                "cron_schedule": {
+                    "type": "string"
+                },
+                "horarios": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.NeighborhoodSchedule"
+                    }
+                },
+                "proxima_actualizacion_rutas": {
+                    "type": "string"
+                },
+                "ultima_actualizacion_rutas": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.HorarioRecoleccion": {
+            "type": "object",
+            "properties": {
+                "fin": {
+                    "type": "string"
+                },
+                "inicio": {
+                    "type": "string"
+                }
+            }
+        },
         "services.NeighborhoodRoutesInfo": {
             "type": "object",
             "properties": {
@@ -2544,6 +2663,17 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "services.NeighborhoodSchedule": {
+            "type": "object",
+            "properties": {
+                "horario_proxima_recoleccion": {
+                    "$ref": "#/definitions/services.HorarioRecoleccion"
+                },
+                "neighborhood": {
+                    "type": "integer"
                 }
             }
         },
@@ -2681,6 +2811,48 @@ const docTemplate = `{
                 "prioridad": {
                     "description": "0-4: Nulo, Bajo, Medio, Alto, Urgente",
                     "type": "integer"
+                }
+            }
+        },
+        "services.UpdateNeighborhoodScheduleRequest": {
+            "type": "object",
+            "required": [
+                "hora_fin",
+                "hora_inicio",
+                "neighborhood"
+            ],
+            "properties": {
+                "anio": {
+                    "description": "Opcional: año (ej: 2025)",
+                    "type": "integer"
+                },
+                "dia": {
+                    "description": "Opcional: día del mes (1-31)",
+                    "type": "integer"
+                },
+                "hora_fin": {
+                    "type": "string"
+                },
+                "hora_inicio": {
+                    "type": "string"
+                },
+                "mes": {
+                    "description": "Opcional: mes (1-12)",
+                    "type": "integer"
+                },
+                "neighborhood": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.UpdateScheduleRequest": {
+            "type": "object",
+            "required": [
+                "cron_schedule"
+            ],
+            "properties": {
+                "cron_schedule": {
+                    "type": "string"
                 }
             }
         },
