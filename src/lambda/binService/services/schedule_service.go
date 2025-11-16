@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"context"
@@ -9,130 +9,161 @@ import (
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 )
 
-// ScheduleConfig representa la configuración de horarios de recolección
-type ScheduleConfig struct {
-	CronSchedule     string    `json:"cron_schedule"`      // Formato cron: "0 16 * * *"
-	NextCollection   time.Time `json:"next_collection"`    // Próxima recolección planificada
-	LastUpdated      time.Time `json:"last_updated"`       // Última actualización
-	Description      string    `json:"description"`        // Descripción legible del cron
+type HorarioRecoleccion struct {
+	Inicio time.Time `json:"inicio"`
+	Fin    time.Time `json:"fin"`
 }
 
-// UpdateScheduleRequest representa los datos para actualizar el horario
+type NeighborhoodSchedule struct {
+	Neighborhood              int                `json:"neighborhood"`
+	HorarioProximaRecoleccion HorarioRecoleccion `json:"horario_proxima_recoleccion"`
+}
+
+type GlobalScheduleConfig struct {
+	Horarios                  []NeighborhoodSchedule `json:"horarios"`
+	UltimaActualizacionRutas  time.Time              `json:"ultima_actualizacion_rutas"`
+	ProximaActualizacionRutas time.Time              `json:"proxima_actualizacion_rutas"`
+	CronSchedule              string                 `json:"cron_schedule"`
+}
+
 type UpdateScheduleRequest struct {
-	CronSchedule string `json:"cron_schedule" binding:"required"` // Ej: "0 16 * * *" = 4PM diario
-	Description  string `json:"description"`                      // Opcional: descripción personalizada (si no se provee, se genera automáticamente)
+	CronSchedule string `json:"cron_schedule" binding:"required"`
 }
 
-const scheduleRedisKey = "schedule_config"
+type UpdateNeighborhoodScheduleRequest struct {
+	Neighborhood int    `json:"neighborhood" binding:"required"`
+	HoraInicio   string `json:"hora_inicio" binding:"required"`
+	HoraFin      string `json:"hora_fin" binding:"required"`
+}
 
-// GetScheduleConfig obtiene la configuración actual de horarios desde Redis
-func GetScheduleConfig() (*ScheduleConfig, error) {
+const scheduleRedisKey = "global_schedule_config"
+
+func GetGlobalSchedule() (*GlobalScheduleConfig, error) {
 	if config.RedisClient == nil {
 		return nil, fmt.Errorf("redis connection not available")
 	}
-
 	ctx := context.Background()
 	data, err := config.RedisClient.Get(ctx, scheduleRedisKey).Result()
-	
-	// Si no existe, devolver configuración por defecto
 	if err != nil {
-		defaultConfig := &ScheduleConfig{
-			CronSchedule:   "0 16 * * *",
-			NextCollection: calculateNextCronExecution("0 16 * * *"),
-			LastUpdated:    time.Now(),
-			Description:    "Diario a las 16:00 (4 PM)",
-		}
-		
-		// Guardar la configuración por defecto
-		if err := saveScheduleConfig(defaultConfig); err != nil {
+		defaultConfig := createDefaultSchedule()
+		if err := saveGlobalSchedule(defaultConfig); err != nil {
 			return nil, fmt.Errorf("error saving default config: %v", err)
 		}
-		
 		return defaultConfig, nil
 	}
-
-	var config ScheduleConfig
-	if err := json.Unmarshal([]byte(data), &config); err != nil {
+	var globalConfig GlobalScheduleConfig
+	if err := json.Unmarshal([]byte(data), &globalConfig); err != nil {
 		return nil, fmt.Errorf("error parsing schedule config: %v", err)
 	}
-
-	return &config, nil
+	return &globalConfig, nil
 }
 
-// UpdateScheduleConfig actualiza la configuración de horarios
-func UpdateScheduleConfig(req UpdateScheduleRequest) (*ScheduleConfig, error) {
-	// Validar formato cron (básico)
+func createDefaultSchedule() *GlobalScheduleConfig {
+	now := time.Now()
+	tomorrow := now.AddDate(0, 0, 1)
+	horarios := []NeighborhoodSchedule{}
+	commonNeighborhoods := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	for _, n := range commonNeighborhoods {
+		horarios = append(horarios, NeighborhoodSchedule{
+			Neighborhood: n,
+			HorarioProximaRecoleccion: HorarioRecoleccion{
+				Inicio: time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 7, 0, 0, 0, now.Location()),
+				Fin:    time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 11, 0, 0, 0, now.Location()),
+			},
+		})
+	}
+	return &GlobalScheduleConfig{
+		Horarios:                  horarios,
+		UltimaActualizacionRutas:  now,
+		ProximaActualizacionRutas: time.Date(tomorrow.Year(), tomorrow.Month(), tomorrow.Day(), 3, 0, 0, 0, now.Location()),
+		CronSchedule:              "0 3 * * *",
+	}
+}
+
+func UpdateCronSchedule(req UpdateScheduleRequest) (*GlobalScheduleConfig, error) {
 	if !isValidCronFormat(req.CronSchedule) {
-		return nil, fmt.Errorf("formato cron inválido. Ejemplo válido: '0 16 * * *'")
+		return nil, fmt.Errorf("formato cron inválido")
 	}
-
-	// Si no se provee descripción personalizada, generarla automáticamente
-	description := req.Description
-	if description == "" {
-		description = describeCronSchedule(req.CronSchedule)
+	currentConfig, err := GetGlobalSchedule()
+	if err != nil {
+		return nil, err
 	}
-
-	newConfig := &ScheduleConfig{
-		CronSchedule:   req.CronSchedule,
-		NextCollection: calculateNextCronExecution(req.CronSchedule),
-		LastUpdated:    time.Now(),
-		Description:    description,
+	currentConfig.CronSchedule = req.CronSchedule
+	currentConfig.ProximaActualizacionRutas = calculateNextCronExecution(req.CronSchedule)
+	if err := saveGlobalSchedule(currentConfig); err != nil {
+		return nil, err
 	}
-
-	if err := saveScheduleConfig(newConfig); err != nil {
-		return nil, fmt.Errorf("error saving schedule config: %v", err)
-	}
-
-	return newConfig, nil
+	return currentConfig, nil
 }
 
-// UpdateLastCollectionTime actualiza la última vez que se ejecutó la recolección
-// Esta función se debe llamar desde el cron handler cuando se ejecuta exitosamente
+func UpdateNeighborhoodSchedule(req UpdateNeighborhoodScheduleRequest) (*GlobalScheduleConfig, error) {
+	currentConfig, err := GetGlobalSchedule()
+	if err != nil {
+		return nil, err
+	}
+	horaInicio, err := time.Parse("15:04", req.HoraInicio)
+	if err != nil {
+		return nil, fmt.Errorf("formato de hora_inicio inválido: %v", err)
+	}
+	horaFin, err := time.Parse("15:04", req.HoraFin)
+	if err != nil {
+		return nil, fmt.Errorf("formato de hora_fin inválido: %v", err)
+	}
+	proximaRecoleccion := currentConfig.ProximaActualizacionRutas
+	inicio := time.Date(proximaRecoleccion.Year(), proximaRecoleccion.Month(), proximaRecoleccion.Day(),
+		horaInicio.Hour(), horaInicio.Minute(), 0, 0, proximaRecoleccion.Location())
+	fin := time.Date(proximaRecoleccion.Year(), proximaRecoleccion.Month(), proximaRecoleccion.Day(),
+		horaFin.Hour(), horaFin.Minute(), 0, 0, proximaRecoleccion.Location())
+	found := false
+	for i := range currentConfig.Horarios {
+		if currentConfig.Horarios[i].Neighborhood == req.Neighborhood {
+			currentConfig.Horarios[i].HorarioProximaRecoleccion = HorarioRecoleccion{Inicio: inicio, Fin: fin}
+			found = true
+			break
+		}
+	}
+	if !found {
+		currentConfig.Horarios = append(currentConfig.Horarios, NeighborhoodSchedule{
+			Neighborhood:              req.Neighborhood,
+			HorarioProximaRecoleccion: HorarioRecoleccion{Inicio: inicio, Fin: fin},
+		})
+	}
+	return currentConfig, saveGlobalSchedule(currentConfig)
+}
+
 func UpdateLastCollectionTime() error {
-	currentConfig, err := GetScheduleConfig()
+	currentConfig, err := GetGlobalSchedule()
 	if err != nil {
 		return err
 	}
-
-	currentConfig.LastUpdated = time.Now()
-	currentConfig.NextCollection = calculateNextCronExecution(currentConfig.CronSchedule)
-
-	return saveScheduleConfig(currentConfig)
+	now := time.Now()
+	currentConfig.UltimaActualizacionRutas = now
+	currentConfig.ProximaActualizacionRutas = calculateNextCronExecution(currentConfig.CronSchedule)
+	for i := range currentConfig.Horarios {
+		horario := &currentConfig.Horarios[i].HorarioProximaRecoleccion
+		proximaRecoleccion := currentConfig.ProximaActualizacionRutas
+		horario.Inicio = time.Date(proximaRecoleccion.Year(), proximaRecoleccion.Month(), proximaRecoleccion.Day(),
+			horario.Inicio.Hour(), horario.Inicio.Minute(), 0, 0, proximaRecoleccion.Location())
+		horario.Fin = time.Date(proximaRecoleccion.Year(), proximaRecoleccion.Month(), proximaRecoleccion.Day(),
+			horario.Fin.Hour(), horario.Fin.Minute(), 0, 0, proximaRecoleccion.Location())
+	}
+	return saveGlobalSchedule(currentConfig)
 }
 
-// saveScheduleConfig guarda la configuración en Redis
-func saveScheduleConfig(scheduleConfig *ScheduleConfig) error {
+func saveGlobalSchedule(schedule *GlobalScheduleConfig) error {
 	if config.RedisClient == nil {
 		return fmt.Errorf("redis connection not available")
 	}
-
-	data, err := json.Marshal(scheduleConfig)
-	if err != nil {
-		return fmt.Errorf("error marshaling config: %v", err)
-	}
-
-	ctx := context.Background()
-	if err := config.RedisClient.Set(ctx, scheduleRedisKey, data, 0).Err(); err != nil {
-		return fmt.Errorf("error saving to redis: %v", err)
-	}
-
-	return nil
+	data, _ := json.Marshal(schedule)
+	return config.RedisClient.Set(context.Background(), scheduleRedisKey, data, 0).Err()
 }
 
-// isValidCronFormat valida básicamente el formato cron (5 campos)
 func isValidCronFormat(cron string) bool {
-	// Validación simple: debe tener 5 campos separados por espacios
-	// Formato: "minuto hora día mes día_semana"
-	// Ejemplo: "0 16 * * *" = 4 PM todos los días
-	fields := len(splitCronFields(cron))
-	return fields == 5
+	return len(splitCronFields(cron)) == 5
 }
 
-// splitCronFields divide el cron en campos
 func splitCronFields(cron string) []string {
-	fields := []string{}
-	current := ""
-	
+	fields, current := []string{}, ""
 	for _, char := range cron {
 		if char == ' ' {
 			if current != "" {
@@ -143,102 +174,42 @@ func splitCronFields(cron string) []string {
 			current += string(char)
 		}
 	}
-	
 	if current != "" {
 		fields = append(fields, current)
 	}
-	
 	return fields
 }
 
-// calculateNextCronExecution calcula la próxima ejecución basada en el cron
-// Versión simplificada - solo maneja algunos casos comunes
 func calculateNextCronExecution(cronSchedule string) time.Time {
 	now := time.Now()
 	fields := splitCronFields(cronSchedule)
-	
 	if len(fields) != 5 {
-		// Si no es válido, asumir 24 horas desde ahora
 		return now.Add(24 * time.Hour)
 	}
-
-	minute := fields[0]
-	hour := fields[1]
-	
-	// Caso simple: horario fijo diario (ej: "0 16 * * *")
+	minute, hour := fields[0], fields[1]
 	if minute != "*" && hour != "*" {
 		var targetHour, targetMinute int
 		fmt.Sscanf(hour, "%d", &targetHour)
 		fmt.Sscanf(minute, "%d", &targetMinute)
-		
 		next := time.Date(now.Year(), now.Month(), now.Day(), targetHour, targetMinute, 0, 0, now.Location())
-		
-		// Si ya pasó hoy, programar para mañana
 		if next.Before(now) {
 			next = next.Add(24 * time.Hour)
 		}
-		
 		return next
 	}
-
-	// Caso: cada hora (ej: "0 * * * *")
 	if hour == "*" && minute != "*" {
 		var targetMinute int
 		fmt.Sscanf(minute, "%d", &targetMinute)
-		
 		next := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), targetMinute, 0, 0, now.Location())
-		
 		if next.Before(now) {
 			next = next.Add(1 * time.Hour)
 		}
-		
 		return next
 	}
-
-	// Caso: cada N horas (ej: "0 */6 * * *")
 	if len(hour) > 2 && hour[:2] == "*/" && minute != "*" {
 		var interval int
 		fmt.Sscanf(hour[2:], "%d", &interval)
 		return now.Add(time.Duration(interval) * time.Hour)
 	}
-
-	// Default: 24 horas
 	return now.Add(24 * time.Hour)
-}
-
-// describeCronSchedule genera una descripción legible del cron
-func describeCronSchedule(cronSchedule string) string {
-	fields := splitCronFields(cronSchedule)
-	
-	if len(fields) != 5 {
-		return "Formato inválido"
-	}
-
-	minute := fields[0]
-	hour := fields[1]
-
-	// Casos comunes
-	if minute == "0" && hour == "16" {
-		return "Diario a las 16:00 (4 PM)"
-	}
-	
-	if minute == "0" && hour == "*" {
-		return "Cada hora en punto"
-	}
-	
-	if minute == "*/30" && hour == "*" {
-		return "Cada 30 minutos"
-	}
-	
-	if minute == "0" && len(hour) > 2 && hour[:2] == "*/" {
-		var interval int
-		fmt.Sscanf(hour[2:], "%d", &interval)
-		return fmt.Sprintf("Cada %d horas", interval)
-	}
-
-	if minute != "*" && hour != "*" {
-		return fmt.Sprintf("Diario a las %s:%s", hour, minute)
-	}
-
-	return "Horario personalizado: " + cronSchedule
 }

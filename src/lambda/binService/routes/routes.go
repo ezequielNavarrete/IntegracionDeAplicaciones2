@@ -65,8 +65,9 @@ func SetupRoutes(r *gin.Engine) {
 	r.POST("/cron/update-routes", handlers.UpdateAllRoutesHandler) // Actualizar todas las rutas en caché
 
 	// Endpoints para horarios de recolección
-	r.GET("/schedule", handlers.GetScheduleConfigHandler)    // Obtener configuración de horarios
-	r.PUT("/schedule", handlers.UpdateScheduleConfigHandler) // Actualizar horario del cron
+	r.GET("/schedule", handlers.GetScheduleHandler)                            // Obtener configuración completa
+	r.PUT("/schedule/cron", handlers.UpdateCronScheduleHandler)                // Actualizar horario del cron
+	r.PUT("/schedule/neighborhood", handlers.UpdateNeighborhoodScheduleHandler) // Actualizar horario de un neighborhood
 
 	// Endpoints para consultar rutas cacheadas
 	r.GET("/routes/neighborhoods", handlers.GetAllNeighborhoodsWithRoutesHandler)                    // Listar todos los neighborhoods con sus rutas
