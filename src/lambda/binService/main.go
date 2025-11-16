@@ -23,6 +23,7 @@ import (
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	_ "github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/docs" // Import generated docs
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/middleware"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/routes"
 	"github.com/gin-gonic/gin"
@@ -51,6 +52,20 @@ func main() {
 
 	// Close Neo4j driver on app shutdown
 	defer config.CloseNeo4jDriver()
+
+	// Inicializar cliente de eventos RabbitMQ
+	eventClient, err := events.InitClient()
+	if err != nil {
+		log.Printf("⚠️ RabbitMQ no disponible: %v", err)
+		log.Printf("⚠️ La aplicación continuará sin eventos (degradación graciosa)")
+	} else {
+		defer eventClient.Close()
+
+		// 🔥 Iniciar consumer de eventos en background
+		if err := events.StartConsumer(); err != nil {
+			log.Printf("⚠️ Consumer no pudo iniciarse: %v", err)
+		}
+	}
 
 	// start Gin server
 	r := gin.Default()
@@ -93,5 +108,6 @@ func main() {
 		port = "8080"
 	}
 
+	log.Printf("🚀 Servidor iniciado en puerto %s", port)
 	r.Run(":" + port)
 }

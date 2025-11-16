@@ -1,0 +1,164 @@
+package schemas
+
+import "time"
+
+// BaseEvent contiene campos comunes a todos los eventos
+type BaseEvent struct {
+	EventID   string    `json:"event_id"`  // UUID único del evento
+	Timestamp time.Time `json:"timestamp"` // Momento del evento
+	ModuloID  string    `json:"modulo_id"` // Identificador del módulo que publica
+}
+
+// ========== EVENTOS QUE PUBLICA RESIDUOS ==========
+
+// TachoEliminadoEvent se publica cuando un tacho es eliminado del sistema
+type TachoEliminadoEvent struct {
+	BaseEvent
+	TachoID int    `json:"tacho_id"`
+	Motivo  string `json:"motivo,omitempty"`
+}
+
+// TachoCreadoEvent se publica cuando se crea un nuevo tacho
+type TachoCreadoEvent struct {
+	BaseEvent
+	TachoID   int     `json:"tacho_id"`
+	Capacidad float64 `json:"capacidad"`
+	Ubicacion string  `json:"ubicacion,omitempty"`
+	ZonaID    int     `json:"zona_id,omitempty"`
+}
+
+// TachoActualizadoEvent se publica cuando se actualiza un tacho
+type TachoActualizadoEvent struct {
+	BaseEvent
+	TachoID     int     `json:"tacho_id"`
+	Capacidad   float64 `json:"capacidad,omitempty"`
+	NuevaZonaID int     `json:"nueva_zona_id,omitempty"`
+	Detalles    string  `json:"detalles,omitempty"`
+}
+
+// TachoLlenoEvent se publica cuando un tacho alcanza su capacidad máxima
+type TachoLlenoEvent struct {
+	BaseEvent
+	TachoID         int       `json:"tacho_id"`
+	CapacidadActual float64   `json:"capacidad_actual"`
+	UltimaFecha     time.Time `json:"ultima_fecha"`
+	ZonaID          int       `json:"zona_id,omitempty"`
+}
+
+// AlertaResueltaEvent - Confirmación de que se resolvió una alerta (PUBLICAMOS)
+type AlertaResueltaEvent struct {
+	EventID           string    `json:"event_id"`
+	EmergenciaID      string    `json:"_id"`              // ID de la emergencia original
+	Estado            string    `json:"Estado"`           // "Resuelto"
+	RutasPerjudicadas int       `json:"ruta_perjudicada"` // Cantidad de rutas afectadas
+	Lng               float64   `json:"lng,omitempty"`
+	Lat               float64   `json:"lat,omitempty"`
+	Timestamp         time.Time `json:"timestamp"`
+	ModuloID          string    `json:"modulo_id"`
+}
+
+// ========== EVENTOS QUE CONSUME RESIDUOS (de otros módulos) ==========
+
+// ReclamoRecibidoEvent evento recibido del módulo de Reclamos
+type ReclamoRecibidoEvent struct {
+	BaseEvent
+	ReclamoID   int    `json:"reclamo_id"`
+	TachoID     int    `json:"tacho_id"`
+	TipoReclamo string `json:"tipo_reclamo"` // "mal_estado", "lleno", "roto", "desbordado"
+	Descripcion string `json:"descripcion,omitempty"`
+	PrioridadID int    `json:"prioridad_id,omitempty"`
+	UsuarioID   int    `json:"usuario_id,omitempty"`
+}
+
+// RecoleccionCompletadaEvent evento del módulo de Conductores cuando se vacía un tacho
+type RecoleccionCompletadaEvent struct {
+	BaseEvent
+	TachoID      int       `json:"tacho_id"`
+	ConductorID  int       `json:"conductor_id,omitempty"`
+	CamionID     int       `json:"camion_id,omitempty"`
+	FechaVaciado time.Time `json:"fecha_vaciado"`
+}
+
+// AlertaVecinalEvent - Evento de emergencias sobre tachos dañados (RECIBIMOS)
+type AlertaVecinalEvent struct {
+	ID             string `json:"_id"`
+	IDUsuario      string `json:"idUsuario"`
+	Prioridad      string `json:"prioridad"`
+	ScorePrioridad int    `json:"scorePrioridad"`
+	Estado         string `json:"estado"` // "Pendiente", "Resuelta", "Cancelada"
+	TipoEmergencia string `json:"tipoEmergencia"`
+	Origen         string `json:"origen"`
+	Ubicacion      struct {
+		Lat       float64 `json:"lat"`
+		Lon       float64 `json:"lon"`
+		Precision int     `json:"precision"`
+	} `json:"ubicacion"`
+	Adjuntos  []interface{} `json:"adjuntos"`
+	Bateria   int           `json:"bateria"`
+	Red       string        `json:"red"`
+	Timestamp time.Time     `json:"timestamp"`
+	CreatedAt time.Time     `json:"createdAt"`
+	UpdatedAt time.Time     `json:"updatedAt"`
+}
+
+// RecoleccionReprogramadaEvent - Calle cortada que afecta rutas (RECIBIMOS de Movilidad)
+type RecoleccionReprogramadaEvent struct {
+	EventVersion string `json:"eventVersion"`
+	Timestamp    string `json:"timestamp"`
+	Data         struct {
+		TripID string `json:"tripId"`
+		Origin struct {
+			Coordinates struct {
+				Lng float64 `json:"lng"`
+				Lat float64 `json:"lat"`
+			} `json:"coordinates"`
+		} `json:"origin"`
+		Destination struct {
+			Coordinates struct {
+				Lng float64 `json:"lng"`
+				Lat float64 `json:"lat"`
+			} `json:"coordinates"`
+		} `json:"destination"`
+	} `json:"data"`
+}
+
+// ReclamoEstadoEvent - Notificación de cambio de estado de reclamo (RECIBIMOS de Reclamos)
+type ReclamoEstadoEvent struct {
+	EventID   string    `json:"event_id"`
+	ReclamoID int       `json:"reclamo_id"`
+	TachoID   int       `json:"tacho_id"`
+	Estado    string    `json:"estado"` // "Resuelto", "Rechazado"
+	Motivo    string    `json:"motivo"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// ========== ROUTING KEYS ==========
+
+const (
+	// Eventos que PUBLICA Residuos
+	RoutingKeyTachoCreado      = "residuos.tacho.creado"
+	RoutingKeyTachoActualizado = "residuos.tacho.actualizado"
+	RoutingKeyTachoEliminado   = "residuos.tacho.eliminado"
+	RoutingKeyTachoLleno       = "residuos.tacho.lleno"
+	RoutingKeyAlertaResuelta   = "residuos.alertavecinal.resuelta"
+
+	// Eventos que CONSUME Residuos (de otros módulos)
+	// De Reclamos (antiguos - deprecar si es necesario)
+	RoutingKeyReclamoMalEstado  = "reclamos.tacho.mal_estado"
+	RoutingKeyReclamoLleno      = "reclamos.tacho.lleno"
+	RoutingKeyReclamoRoto       = "reclamos.tacho.roto"
+	RoutingKeyReclamoDesbordado = "reclamos.tacho.desbordado"
+
+	// De Emergencias (nuevos - según bindings reales)
+	RoutingKeyAlertaPendiente = "residuos.alertavecinal.pendiente"
+
+	// De Movilidad
+	RoutingKeyRecoleccionReprogramada = "residuos.recoleccion.reprogramada"
+
+	// De Reclamos (resolución de reclamos)
+	RoutingKeyReclamoResuelto  = "residuos.resuelto"
+	RoutingKeyReclamoRechazado = "residuos.reclamos.rechazado"
+
+	// De Conductores
+	RoutingKeyRecoleccionCompletada = "conductores.recoleccion.completada"
+)
