@@ -163,8 +163,18 @@ func UpdateAllRoutesHandler(c *gin.Context) {
 	duration := time.Since(start)
 	middleware.ObserveCronUpdateTime(duration.Seconds())
 
-	// 5. Generar personas a partir de las rutas
-	fmt.Printf("[CRON] 📊 Paso 5: Generando personas a partir de las rutas...\n")
+	// 5. Actualizar el timestamp de última recolección
+	fmt.Printf("[CRON] 📊 Paso 5: Actualizando horario de última recolección...\n")
+	if err := services.UpdateLastCollectionTime(); err != nil {
+		fmt.Printf("[CRON] ⚠️  Error actualizando horario: %v\n", err)
+		// No falla el proceso completo si falla la actualización del horario
+	} else {
+		fmt.Printf("[CRON] ✅ Horario actualizado exitosamente\n")
+	}
+	fmt.Println()
+
+	// 6. Generar personas a partir de las rutas
+	fmt.Printf("[CRON] 📊 Paso 6: Generando personas a partir de las rutas...\n")
 	if err := services.GeneratePersonasFromRoutes(); err != nil {
 		fmt.Printf("[CRON] ⚠️  Error generando personas: %v\n", err)
 		// No falla el proceso completo si falla la generación de personas
