@@ -425,12 +425,16 @@ definitions:
         type: string
       id_tacho:
         type: integer
+      id_tipo:
+        type: integer
       latitud:
         type: number
       longitud:
         type: number
       neighborhood:
         type: integer
+      tipo_tacho:
+        type: string
     type: object
   services.UpdateCaracteristicaRequest:
     properties:
@@ -1172,20 +1176,24 @@ paths:
     put:
       consumes:
       - application/json
-      description: Actualiza el estado de un reclamo específico
+      description: 'Actualiza el estado de un reclamo específico. Estados permitidos:
+        ESPERA_INFO, RECHAZADO, RESUELTO'
       parameters:
       - description: ID del reclamo
         in: path
         name: id
         required: true
         type: integer
-      - description: Nuevo estado
+      - description: Estado y comentario opcional
         in: body
-        name: estado
+        name: request
         required: true
         schema:
-          additionalProperties:
-            type: string
+          properties:
+            comentario:
+              type: string
+            estado:
+              type: string
           type: object
       produces:
       - application/json

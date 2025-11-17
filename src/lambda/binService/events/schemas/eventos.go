@@ -1,6 +1,9 @@
 package schemas
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // BaseEvent contiene campos comunes a todos los eventos
 type BaseEvent struct {
@@ -132,6 +135,52 @@ type ReclamoEstadoEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// ========== FORMATO ESTÁNDAR DE ENVELOPE ==========
+
+// EventEnvelope es el formato estándar de todos los eventos según especificación
+type EventEnvelope struct {
+	ID        string          `json:"id"`        // UUID único del evento
+	Timestamp time.Time       `json:"timestamp"` // Momento de generación (ISO 8601)
+	Source    string          `json:"source"`    // Microservicio que publica (e.g., "movilidad")
+	Topic     string          `json:"topic"`     // Debe coincidir con la Routing Key
+	Payload   json.RawMessage `json:"payload"`   // Cuerpo del evento (JSON)
+}
+
+// ReclamoResiduoPayload es el payload específico para reclamos de residuos creados
+type ReclamoResiduoPayload struct {
+	IDReclamo      int       `json:"id_reclamo"`
+	IDSubcategoria *int      `json:"id_subcategoria"` // Puede ser null
+	Titulo         string    `json:"titulo"`
+	Descripcion    string    `json:"descripcion"`
+	Prioridad      string    `json:"prioridad"`
+	Direccion      string    `json:"direccion"`
+	Referencia     string    `json:"referencia"`
+	Comuna         *int      `json:"comuna"` // Puede ser null
+	Lat            string    `json:"lat"`    // Puede ser string vacío ""
+	Lng            string    `json:"lng"`    // Puede ser string vacío ""
+	Fecha          time.Time `json:"fecha"`
+}
+
+// ReclamoEstadoCambiadoPayload es el payload cuando cambia el estado de un reclamo
+type ReclamoEstadoCambiadoPayload struct {
+	IDReclamo      int       `json:"id_reclamo"`
+	Comentario     string    `json:"comentario"`
+	Estado         string    `json:"estado"` // "RESUELTO", "RECHAZADO", "ESPERA_INFO"
+	FechaRespuesta time.Time `json:"fechaRespuesta"`
+}
+
+// EventoCulturaPayload es el payload para eventos culturales (estructura tentativa)
+// TODO: Ajustar campos cuando se conozca la estructura exacta del payload
+type EventoCulturaPayload struct {
+	// Estructura genérica por ahora para capturar todo
+	Data map[string]interface{} `json:"data,omitempty"`
+	
+	// Campos esperados según ejemplo (se ajustarán)
+	Name  string `json:"name,omitempty"`
+	Date  string `json:"date,omitempty"`
+	Place string `json:"place,omitempty"`
+}
+
 // ========== ROUTING KEYS ==========
 
 const (
@@ -142,6 +191,11 @@ const (
 	RoutingKeyTachoLleno       = "residuos.tacho.lleno"
 	RoutingKeyAlertaResuelta   = "residuos.alertavecinal.resuelta"
 
+	// Eventos que PUBLICA Residuos - Cambios de estado de reclamos
+	RoutingKeyReclamoResueltoPub   = "residuos.reclamo.resuelto"
+	RoutingKeyReclamoRechazadoPub  = "residuos.reclamo.rechazado"
+	RoutingKeyReclamoEsperaInfoPub = "residuos.reclamo.espera_info"
+
 	// Eventos que CONSUME Residuos (de otros módulos)
 	// De Reclamos (antiguos - deprecar si es necesario)
 	RoutingKeyReclamoMalEstado  = "reclamos.tacho.mal_estado"
@@ -149,16 +203,24 @@ const (
 	RoutingKeyReclamoRoto       = "reclamos.tacho.roto"
 	RoutingKeyReclamoDesbordado = "reclamos.tacho.desbordado"
 
+	// De Reclamos (nuevos - formato envelope estándar)
+	RoutingKeyReclamoResiduoCreado  = "reclamos.residuos.deshecho.creado"
+	RoutingKeyReclamoResiduoDerivado = "reclamos.residuos.derivado"
+
 	// De Emergencias (nuevos - según bindings reales)
 	RoutingKeyAlertaPendiente = "residuos.alertavecinal.pendiente"
 
 	// De Movilidad
 	RoutingKeyRecoleccionReprogramada = "residuos.recoleccion.reprogramada"
 
-	// De Reclamos (resolución de reclamos)
+	// De Reclamos (resolución de reclamos - CONSUME)
 	RoutingKeyReclamoResuelto  = "residuos.resuelto"
 	RoutingKeyReclamoRechazado = "residuos.reclamos.rechazado"
 
 	// De Conductores
 	RoutingKeyRecoleccionCompletada = "conductores.recoleccion.completada"
+
+	// De Cultura
+	RoutingKeyEventoCulturaCrear    = "cultura.evento.crear"
+	RoutingKeyEventoCulturaCancelar = "cultura.evento.cancelado"
 )

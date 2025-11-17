@@ -67,10 +67,10 @@ func createDefaultSchedule() *GlobalScheduleConfig {
 	now := time.Now()
 	tomorrow := now.AddDate(0, 0, 1)
 	horarios := []NeighborhoodSchedule{}
-	
+
 	// Obtener neighborhoods desde MongoDB
 	neighborhoods := getActiveNeighborhoodsFromMongo()
-	
+
 	for _, n := range neighborhoods {
 		horarios = append(horarios, NeighborhoodSchedule{
 			Neighborhood: n,
@@ -90,21 +90,21 @@ func createDefaultSchedule() *GlobalScheduleConfig {
 
 func getActiveNeighborhoodsFromMongo() []int {
 	ctx := context.Background()
-	
+
 	// Usar la función de configuración existente
 	collection, err := config.GetMongoCollection("bins")
 	if err != nil {
 		fmt.Printf("Warning: No se pudo obtener colección de MongoDB, usando fallback: %v\n", err)
 		return []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	}
-	
+
 	// Obtener neighborhoods únicos desde la colección bins
 	neighborhoods, err := collection.Distinct(ctx, "neighborhood", bson.M{})
 	if err != nil {
 		fmt.Printf("Warning: No se pudieron obtener neighborhoods desde MongoDB, usando fallback: %v\n", err)
 		return []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	}
-	
+
 	// Convertir a []int y ordenar
 	result := []int{}
 	for _, n := range neighborhoods {
@@ -119,16 +119,16 @@ func getActiveNeighborhoodsFromMongo() []int {
 			result = append(result, int(v))
 		}
 	}
-	
+
 	// Ordenar para mantener consistencia
 	sort.Ints(result)
-	
+
 	// Si no encontramos ningún neighborhood, usar fallback
 	if len(result) == 0 {
 		fmt.Println("Warning: No se encontraron neighborhoods en MongoDB, usando fallback")
 		return []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	}
-	
+
 	fmt.Printf("✓ Neighborhoods encontrados en MongoDB: %v\n", result)
 	return result
 }
@@ -162,11 +162,11 @@ func UpdateNeighborhoodSchedule(req UpdateNeighborhoodScheduleRequest) (*GlobalS
 	if err != nil {
 		return nil, fmt.Errorf("formato de hora_fin inválido: %v", err)
 	}
-	
+
 	// Usar fecha especificada o fecha de próxima recolección por defecto
 	proximaRecoleccion := currentConfig.ProximaActualizacionRutas
 	year, month, day := proximaRecoleccion.Year(), proximaRecoleccion.Month(), proximaRecoleccion.Day()
-	
+
 	// Si se proporcionan campos de fecha, usarlos
 	if req.Anio > 0 {
 		year = req.Anio
@@ -177,10 +177,10 @@ func UpdateNeighborhoodSchedule(req UpdateNeighborhoodScheduleRequest) (*GlobalS
 	if req.Dia > 0 && req.Dia <= 31 {
 		day = req.Dia
 	}
-	
+
 	inicio := time.Date(year, month, day, horaInicio.Hour(), horaInicio.Minute(), 0, 0, proximaRecoleccion.Location())
 	fin := time.Date(year, month, day, horaFin.Hour(), horaFin.Minute(), 0, 0, proximaRecoleccion.Location())
-	
+
 	found := false
 	for i := range currentConfig.Horarios {
 		if currentConfig.Horarios[i].Neighborhood == req.Neighborhood {
