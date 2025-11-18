@@ -174,7 +174,7 @@ type ReclamoEstadoCambiadoPayload struct {
 type EventoCulturaPayload struct {
 	// Estructura genérica por ahora para capturar todo
 	Data map[string]interface{} `json:"data,omitempty"`
-	
+
 	// Campos esperados según ejemplo (se ajustarán)
 	Name  string `json:"name,omitempty"`
 	Date  string `json:"date,omitempty"`
@@ -204,7 +204,7 @@ const (
 	RoutingKeyReclamoDesbordado = "reclamos.tacho.desbordado"
 
 	// De Reclamos (nuevos - formato envelope estándar)
-	RoutingKeyReclamoResiduoCreado  = "reclamos.residuos.deshecho.creado"
+	RoutingKeyReclamoResiduoCreado   = "reclamos.residuos.deshecho.creado"
 	RoutingKeyReclamoResiduoDerivado = "reclamos.residuos.derivado"
 
 	// De Emergencias (nuevos - según bindings reales)

@@ -2726,6 +2726,10 @@ const docTemplate = `{
                 "id_reclamo": {
                     "type": "integer"
                 },
+                "id_reclamo_externo": {
+                    "description": "ID del reclamo en el sistema externo",
+                    "type": "integer"
+                },
                 "id_subcategoria": {
                     "type": "integer"
                 },

@@ -21,7 +21,7 @@ func GetHandlers() map[string]HandlerFunc {
 		schemas.RoutingKeyReclamoDesbordado: ReclamoHandler,
 
 		// Eventos de Reclamos (nuevos - formato envelope estándar)
-		schemas.RoutingKeyReclamoResiduoCreado:  ReclamoResiduoHandler,
+		schemas.RoutingKeyReclamoResiduoCreado:   ReclamoResiduoHandler,
 		schemas.RoutingKeyReclamoResiduoDerivado: ReclamoResiduoHandler, // Reutiliza el mismo handler
 
 		// Eventos de Conductores (recolecciones completadas)

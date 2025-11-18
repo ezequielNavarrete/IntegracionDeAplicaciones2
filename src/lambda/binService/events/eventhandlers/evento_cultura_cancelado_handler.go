@@ -31,7 +31,7 @@ func EventoCulturaCanceladoHandler(d amqp.Delivery) error {
 	if envelope.ID == "" && envelope.Source == "" && envelope.Topic == "" {
 		log.Println("⚠️  [EventoCulturaCancelado] Envelope vacío - cultura NO está usando formato estándar")
 		log.Println("📦 El payload está directamente en el body (sin envelope)")
-		
+
 		// El body ES el payload directamente
 		var payloadMap map[string]interface{}
 		if err := json.Unmarshal(d.Body, &payloadMap); err != nil {
