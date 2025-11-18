@@ -94,8 +94,8 @@ func processReclamoPayload(payload schemas.ReclamoResiduoPayload) error {
 
 	// 6. Insertar reclamo en MySQL
 	query := `
-		INSERT INTO Reclamos (id_persona, id_subcategoria, titulo, descripcion, prioridad, estado, direccion, lat, lng, fecha)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO Reclamos (id_persona, id_subcategoria, titulo, descripcion, prioridad, estado, direccion, lat, lng, fecha, id_reclamo_externo)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	result := config.DB.Exec(query,
@@ -109,6 +109,7 @@ func processReclamoPayload(payload schemas.ReclamoResiduoPayload) error {
 		lat,
 		lng,
 		fecha,
+		payload.IDReclamo, // id_reclamo_externo - ID del reclamo en el sistema de Reclamos
 	)
 
 	if result.Error() != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -194,6 +195,21 @@ func UpdateReclamoEstadoHandler(c *gin.Context) {
 
 // publishReclamoEstadoEvent publica el evento de cambio de estado a RabbitMQ
 func publishReclamoEstadoEvent(c *gin.Context, reclamoID int, estado, comentario string) error {
+	// Obtener el id_reclamo_externo del reclamo
+	reclamo, err := services.GetReclamoByID(reclamoID)
+	if err != nil {
+		return fmt.Errorf("error obteniendo reclamo: %v", err)
+	}
+
+	// Usar el id_reclamo_externo si existe, sino el id interno
+	idParaPublicar := reclamoID
+	if reclamo.IDReclamoExterno != nil && *reclamo.IDReclamoExterno > 0 {
+		idParaPublicar = *reclamo.IDReclamoExterno
+		log.Printf("📤 [PublishReclamoEstado] Usando ID externo para publicar: %d (ID interno: %d)", idParaPublicar, reclamoID)
+	} else {
+		log.Printf("📤 [PublishReclamoEstado] Usando ID interno para publicar: %d (no tiene ID externo)", reclamoID)
+	}
+
 	// Determinar routing key según el estado
 	var routingKey string
 	switch estado {
@@ -207,9 +223,9 @@ func publishReclamoEstadoEvent(c *gin.Context, reclamoID int, estado, comentario
 		return nil // No publicar si no es un estado conocido
 	}
 
-	// Crear payload del evento
+	// Crear payload del evento con el ID externo
 	payload := schemas.ReclamoEstadoCambiadoPayload{
-		IDReclamo:      reclamoID,
+		IDReclamo:      idParaPublicar, // Usar ID externo del sistema de Reclamos
 		Comentario:     comentario,
 		Estado:         estado,
 		FechaRespuesta: time.Now(),
