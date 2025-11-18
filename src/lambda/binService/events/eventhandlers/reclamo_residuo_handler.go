@@ -18,7 +18,7 @@ import (
 // Formato: envelope estándar con payload específico de reclamo
 func ReclamoResiduoHandler(d amqp.Delivery) error {
 	log.Printf("📥 [ReclamoResiduo] Recibido evento: %s", d.RoutingKey)
-	
+
 	// PRIMERO: Loguear el body COMPLETO sin parsear
 	log.Printf("📄 [ReclamoResiduo] Body raw completo: %s", string(d.Body))
 	log.Printf("📏 [ReclamoResiduo] Tamaño del body: %d bytes", len(d.Body))
@@ -40,13 +40,13 @@ func ReclamoResiduoHandler(d amqp.Delivery) error {
 	if envelope.ID == "" && envelope.Source == "" && envelope.Topic == "" && len(envelope.Payload) == 0 {
 		log.Println("⚠️  [ReclamoResiduo] Envelope VACÍO - el módulo NO está usando formato estándar")
 		log.Println("📦 [ReclamoResiduo] Parseando el body directamente como payload (sin envelope)")
-		
+
 		// El body ES el payload directamente (sin envelope)
 		if err := json.Unmarshal(d.Body, &payload); err != nil {
 			log.Printf("❌ [ReclamoResiduo] Error parseando body directo como payload: %v", err)
 			return fmt.Errorf("error parsing direct payload: %v", err)
 		}
-		
+
 		log.Printf("✅ [ReclamoResiduo] Payload parseado directamente (sin envelope)")
 	} else {
 		// Envelope válido - parsear payload desde envelope.Payload
@@ -99,7 +99,7 @@ func processReclamoPayload(payload schemas.ReclamoResiduoPayload) error {
 	`
 
 	result := config.DB.Exec(query,
-		1, // TODO: Mapear id_persona desde el evento si está disponible
+		1, // id_persona = 1 (no refiere a ninguna persona, FK eliminada)
 		payload.IDSubcategoria,
 		payload.Titulo,
 		payload.Descripcion,
@@ -160,7 +160,7 @@ func createFakeTachoForReclamo(payload schemas.ReclamoResiduoPayload, lat, lng f
 	}
 	opts := options.FindOne().SetSort(map[string]int{"id": -1})
 	err = mongoCollection.FindOne(ctx, map[string]interface{}{}, opts).Decode(&lastBin)
-	
+
 	mongoID := 1 // ID por defecto si no hay documentos
 	if err == nil {
 		mongoID = lastBin.ID + 1
