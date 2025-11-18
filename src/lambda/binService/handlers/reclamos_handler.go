@@ -1,11 +1,18 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events/schemas"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // GetAllReclamosHandler obtiene todos los reclamos
@@ -119,14 +126,14 @@ func DeleteReclamoHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Reclamo eliminado exitosamente"})
 }
 
-// UpdateReclamoEstadoHandler actualiza el estado de un reclamo
+// UpdateReclamoEstadoHandler actualiza el estado de un reclamo y publica evento a RabbitMQ
 // @Summary Actualizar estado de un reclamo
-// @Description Actualiza el estado de un reclamo específico
+// @Description Actualiza el estado de un reclamo específico. Estados permitidos: ESPERA_INFO, RECHAZADO, RESUELTO
 // @Tags Reclamos
 // @Accept json
 // @Produce json
 // @Param id path int true "ID del reclamo"
-// @Param estado body map[string]string true "Nuevo estado"
+// @Param request body object{estado=string,comentario=string} true "Estado y comentario opcional"
 // @Success 200 {object} map[string]string "Estado actualizado exitosamente"
 // @Failure 400 {object} map[string]string "Datos inválidos"
 // @Failure 404 {object} map[string]string "Reclamo no encontrado"
@@ -141,7 +148,8 @@ func UpdateReclamoEstadoHandler(c *gin.Context) {
 	}
 
 	var body struct {
-		Estado string `json:"estado" binding:"required"`
+		Estado     string `json:"estado" binding:"required"`
+		Comentario string `json:"comentario"` // Opcional
 	}
 
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -149,17 +157,102 @@ func UpdateReclamoEstadoHandler(c *gin.Context) {
 		return
 	}
 
+	// Validar que el estado sea uno de los permitidos
+	estadosPermitidos := map[string]bool{
+		"ESPERA_INFO": true,
+		"RECHAZADO":   true,
+		"RESUELTO":    true,
+	}
+
+	if !estadosPermitidos[body.Estado] {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Estado inválido. Estados permitidos: ESPERA_INFO, RECHAZADO, RESUELTO",
+		})
+		return
+	}
+
+	// Actualizar estado en MySQL
 	if err := services.UpdateReclamoEstado(reclamoID, body.Estado); err != nil {
 		if err.Error() == "reclamo not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Reclamo no encontrado"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar estado del reclamo"})
 		return
+	}
+
+	// Publicar evento a RabbitMQ
+	if err := publishReclamoEstadoEvent(c, reclamoID, body.Estado, body.Comentario); err != nil {
+		log.Printf("⚠️  [UpdateReclamoEstado] Error publicando evento a RabbitMQ: %v (el estado se actualizó en MySQL)", err)
+		// No retornamos error porque el estado ya se actualizó en MySQL
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Estado actualizado exitosamente",
 		"estado":  body.Estado,
 	})
+}
+
+// publishReclamoEstadoEvent publica el evento de cambio de estado a RabbitMQ
+func publishReclamoEstadoEvent(c *gin.Context, reclamoID int, estado, comentario string) error {
+	// Obtener el id_reclamo_externo del reclamo
+	reclamo, err := services.GetReclamoByID(reclamoID)
+	if err != nil {
+		return fmt.Errorf("error obteniendo reclamo: %v", err)
+	}
+
+	// Usar el id_reclamo_externo si existe, sino el id interno
+	idParaPublicar := reclamoID
+	if reclamo.IDReclamoExterno != nil && *reclamo.IDReclamoExterno > 0 {
+		idParaPublicar = *reclamo.IDReclamoExterno
+		log.Printf("📤 [PublishReclamoEstado] Usando ID externo para publicar: %d (ID interno: %d)", idParaPublicar, reclamoID)
+	} else {
+		log.Printf("📤 [PublishReclamoEstado] Usando ID interno para publicar: %d (no tiene ID externo)", reclamoID)
+	}
+
+	// Determinar routing key según el estado
+	var routingKey string
+	switch estado {
+	case "RESUELTO":
+		routingKey = schemas.RoutingKeyReclamoResueltoPub
+	case "RECHAZADO":
+		routingKey = schemas.RoutingKeyReclamoRechazadoPub
+	case "ESPERA_INFO":
+		routingKey = schemas.RoutingKeyReclamoEsperaInfoPub
+	default:
+		return nil // No publicar si no es un estado conocido
+	}
+
+	// Crear payload del evento con el ID externo
+	payload := schemas.ReclamoEstadoCambiadoPayload{
+		IDReclamo:      idParaPublicar, // Usar ID externo del sistema de Reclamos
+		Comentario:     comentario,
+		Estado:         estado,
+		FechaRespuesta: time.Now(),
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// Crear envelope estándar
+	envelope := schemas.EventEnvelope{
+		ID:        uuid.New().String(),
+		Timestamp: time.Now(),
+		Source:    "residuos",
+		Topic:     routingKey,
+		Payload:   payloadBytes,
+	}
+
+	// Publicar evento usando el contexto de la petición HTTP
+	ctx := c.Request.Context()
+	if err := events.Publish(ctx, routingKey, envelope); err != nil {
+		return err
+	}
+
+	log.Printf("✅ [UpdateReclamoEstado] Evento publicado - Routing Key: %s, Reclamo ID: %d, Estado: %s",
+		routingKey, reclamoID, estado)
+
+	return nil
 }

@@ -9,17 +9,18 @@ import (
 
 // Reclamo representa un reclamo en la base de datos
 type Reclamo struct {
-	IDReclamo      int       `json:"id_reclamo" gorm:"column:id_reclamo;primaryKey"`
-	IDPersona      int       `json:"id_persona" gorm:"column:id_persona"`
-	IDSubcategoria *int      `json:"id_subcategoria" gorm:"column:id_subcategoria"`
-	Titulo         string    `json:"titulo" gorm:"column:titulo"`
-	Descripcion    string    `json:"descripcion" gorm:"column:descripcion"`
-	Prioridad      string    `json:"prioridad" gorm:"column:prioridad"`
-	Estado         string    `json:"estado" gorm:"column:estado"`
-	Direccion      string    `json:"direccion" gorm:"column:direccion"`
-	Lat            float64   `json:"lat" gorm:"column:lat"`
-	Lng            float64   `json:"lng" gorm:"column:lng"`
-	Fecha          time.Time `json:"fecha" gorm:"column:fecha"`
+	IDReclamo        int       `json:"id_reclamo" gorm:"column:id_reclamo;primaryKey"`
+	IDPersona        int       `json:"id_persona" gorm:"column:id_persona"`
+	IDSubcategoria   *int      `json:"id_subcategoria" gorm:"column:id_subcategoria"`
+	Titulo           string    `json:"titulo" gorm:"column:titulo"`
+	Descripcion      string    `json:"descripcion" gorm:"column:descripcion"`
+	Prioridad        string    `json:"prioridad" gorm:"column:prioridad"`
+	Estado           string    `json:"estado" gorm:"column:estado"`
+	Direccion        string    `json:"direccion" gorm:"column:direccion"`
+	Lat              float64   `json:"lat" gorm:"column:lat"`
+	Lng              float64   `json:"lng" gorm:"column:lng"`
+	Fecha            time.Time `json:"fecha" gorm:"column:fecha"`
+	IDReclamoExterno *int      `json:"id_reclamo_externo,omitempty" gorm:"column:id_reclamo_externo"` // ID del reclamo en el sistema externo
 }
 
 // CreateReclamoRequest representa la solicitud para crear un reclamo

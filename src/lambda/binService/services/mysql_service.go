@@ -162,6 +162,8 @@ type CaracteristicaTacho struct {
 // TachoCompleto representa un tacho con toda la información necesaria
 type TachoCompleto struct {
 	IDTacho         int                   `json:"id_tacho" gorm:"column:id_tacho"`
+	IDTipo          int                   `json:"id_tipo" gorm:"column:id_tipo"`
+	TipoTacho       string                `json:"tipo_tacho" gorm:"column:tipo_tacho"`
 	Neighborhood    int                   `json:"neighborhood" gorm:"column:neighborhood"`
 	Latitud         float64               `json:"latitud" gorm:"column:latitud"`
 	Longitud        float64               `json:"longitud" gorm:"column:longitud"`
@@ -180,6 +182,8 @@ func GetAllTachos() ([]TachoCompleto, error) {
 	query := `
 		SELECT 
 			t.id_tacho,
+			t.id_tipo,
+			COALESCE(tt.nombre_tipo, 'Desconocido') as tipo_tacho,
 			t.id_mongo,
 			COALESCE(et.tipo_estado, 'activo') as estado,
 			t.capacidad,
@@ -187,6 +191,7 @@ func GetAllTachos() ([]TachoCompleto, error) {
 			ec.nombre as caracteristica_estado,
 			ec.prioridad as caracteristica_prioridad
 		FROM Tacho t
+		LEFT JOIN Tipo_Tacho tt ON t.id_tipo = tt.id_tipo
 		LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
 		LEFT JOIN Lista_caracteristica_tacho lct ON t.id_tacho = lct.id_tacho
 		LEFT JOIN Caracteristica_tacho ct ON lct.id_caracteristica = ct.id_caracteristica
@@ -197,6 +202,8 @@ func GetAllTachos() ([]TachoCompleto, error) {
 	// Estructura temporal para leer los resultados con características
 	type TachoCaracteristicaRow struct {
 		IDTacho                 int     `gorm:"column:id_tacho"`
+		IDTipo                  int     `gorm:"column:id_tipo"`
+		TipoTacho               string  `gorm:"column:tipo_tacho"`
 		IDMongo                 int     `gorm:"column:id_mongo"`
 		Estado                  string  `gorm:"column:estado"`
 		Capacidad               float64 `gorm:"column:capacidad"`
@@ -225,6 +232,8 @@ func GetAllTachos() ([]TachoCompleto, error) {
 		if _, exists := tachosMap[row.IDTacho]; !exists {
 			tacho := &TachoCompleto{
 				IDTacho:         row.IDTacho,
+				IDTipo:          row.IDTipo,
+				TipoTacho:       row.TipoTacho,
 				Estado:          row.Estado,
 				Capacidad:       row.Capacidad,
 				Neighborhood:    0,
@@ -273,6 +282,8 @@ func GetTachoByID(tachoID int) (*TachoCompleto, error) {
 	query := `
 		SELECT 
 			t.id_tacho,
+			t.id_tipo,
+			COALESCE(tt.nombre_tipo, 'Desconocido') as tipo_tacho,
 			t.id_mongo,
 			COALESCE(et.tipo_estado, 'activo') as estado,
 			t.capacidad,
@@ -280,6 +291,7 @@ func GetTachoByID(tachoID int) (*TachoCompleto, error) {
 			ec.nombre as caracteristica_estado,
 			ec.prioridad as caracteristica_prioridad
 		FROM Tacho t
+		LEFT JOIN Tipo_Tacho tt ON t.id_tipo = tt.id_tipo
 		LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
 		LEFT JOIN Lista_caracteristica_tacho lct ON t.id_tacho = lct.id_tacho
 		LEFT JOIN Caracteristica_tacho ct ON lct.id_caracteristica = ct.id_caracteristica
@@ -291,6 +303,8 @@ func GetTachoByID(tachoID int) (*TachoCompleto, error) {
 	// Estructura temporal para leer los resultados con características
 	type TachoCaracteristicaRow struct {
 		IDTacho                 int     `gorm:"column:id_tacho"`
+		IDTipo                  int     `gorm:"column:id_tipo"`
+		TipoTacho               string  `gorm:"column:tipo_tacho"`
 		IDMongo                 int     `gorm:"column:id_mongo"`
 		Estado                  string  `gorm:"column:estado"`
 		Capacidad               float64 `gorm:"column:capacidad"`
@@ -315,6 +329,8 @@ func GetTachoByID(tachoID int) (*TachoCompleto, error) {
 	// Crear el tacho con datos básicos
 	tacho := &TachoCompleto{
 		IDTacho:         firstRow.IDTacho,
+		IDTipo:          firstRow.IDTipo,
+		TipoTacho:       firstRow.TipoTacho,
 		Estado:          firstRow.Estado,
 		Capacidad:       firstRow.Capacidad,
 		Neighborhood:    0,

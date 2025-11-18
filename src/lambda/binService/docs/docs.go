@@ -1032,7 +1032,7 @@ const docTemplate = `{
         },
         "/reclamos/{id}/estado": {
             "put": {
-                "description": "Actualiza el estado de un reclamo específico",
+                "description": "Actualiza el estado de un reclamo específico. Estados permitidos: ESPERA_INFO, RECHAZADO, RESUELTO",
                 "consumes": [
                     "application/json"
                 ],
@@ -1052,14 +1052,19 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Nuevo estado",
-                        "name": "estado",
+                        "description": "Estado y comentario opcional",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "properties": {
+                                "comentario": {
+                                    "type": "string"
+                                },
+                                "estado": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -2721,6 +2726,10 @@ const docTemplate = `{
                 "id_reclamo": {
                     "type": "integer"
                 },
+                "id_reclamo_externo": {
+                    "description": "ID del reclamo en el sistema externo",
+                    "type": "integer"
+                },
                 "id_subcategoria": {
                     "type": "integer"
                 },
@@ -2790,6 +2799,9 @@ const docTemplate = `{
                 "id_tacho": {
                     "type": "integer"
                 },
+                "id_tipo": {
+                    "type": "integer"
+                },
                 "latitud": {
                     "type": "number"
                 },
@@ -2798,6 +2810,9 @@ const docTemplate = `{
                 },
                 "neighborhood": {
                     "type": "integer"
+                },
+                "tipo_tacho": {
+                    "type": "string"
                 }
             }
         },

@@ -20,8 +20,16 @@ func GetHandlers() map[string]HandlerFunc {
 		schemas.RoutingKeyReclamoRoto:       ReclamoHandler,
 		schemas.RoutingKeyReclamoDesbordado: ReclamoHandler,
 
+		// Eventos de Reclamos (nuevos - formato envelope estándar)
+		schemas.RoutingKeyReclamoResiduoCreado:   ReclamoResiduoHandler,
+		schemas.RoutingKeyReclamoResiduoDerivado: ReclamoResiduoHandler, // Reutiliza el mismo handler
+
 		// Eventos de Conductores (recolecciones completadas)
 		schemas.RoutingKeyRecoleccionCompletada: RecoleccionHandler,
+
+		// Eventos de Cultura (solo logging por ahora)
+		schemas.RoutingKeyEventoCulturaCrear:    EventoCulturaHandler,
+		schemas.RoutingKeyEventoCulturaCancelar: EventoCulturaCanceladoHandler,
 
 		// Nuevos handlers de otros módulos
 		schemas.RoutingKeyAlertaPendiente:         AlertaVecinalHandler,           // De Emergencias
@@ -40,11 +48,19 @@ func GetRoutingKeys() []string {
 		schemas.RoutingKeyReclamoRoto,
 		schemas.RoutingKeyReclamoDesbordado,
 
+		// Reclamos de residuos (nuevos - formato envelope)
+		schemas.RoutingKeyReclamoResiduoCreado,
+		schemas.RoutingKeyReclamoResiduoDerivado,
+
 		// Patrón wildcard para cualquier reclamo de tachos (backup)
 		"reclamos.tacho.#",
 
 		// Recolecciones
 		schemas.RoutingKeyRecoleccionCompletada,
+
+		// Cultura
+		schemas.RoutingKeyEventoCulturaCrear,
+		schemas.RoutingKeyEventoCulturaCancelar,
 
 		// Emergencias
 		schemas.RoutingKeyAlertaPendiente,
