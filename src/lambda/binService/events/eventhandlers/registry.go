@@ -32,10 +32,8 @@ func GetHandlers() map[string]HandlerFunc {
 		schemas.RoutingKeyEventoCulturaCancelar: EventoCulturaCanceladoHandler,
 
 		// Nuevos handlers de otros módulos
-		schemas.RoutingKeyAlertaPendiente:         AlertaVecinalHandler,           // De Emergencias
-		schemas.RoutingKeyRecoleccionReprogramada: RecoleccionReprogramadaHandler, // De Movilidad
-		schemas.RoutingKeyReclamoResuelto:         ReclamoEstadoHandler,           // De Reclamos (resolución)
-		schemas.RoutingKeyReclamoRechazado:        ReclamoEstadoHandler,           // De Reclamos (rechazo)
+		schemas.RoutingKeyAlertaPendiente: AlertaVecinalHandler, // De Emergencia
+		// De Reclamos (rechazo)
 	}
 }
 
@@ -64,13 +62,6 @@ func GetRoutingKeys() []string {
 
 		// Emergencias
 		schemas.RoutingKeyAlertaPendiente,
-
-		// Movilidad
-		schemas.RoutingKeyRecoleccionReprogramada,
-
-		// Reclamos (resolución/rechazo)
-		schemas.RoutingKeyReclamoResuelto,
-		schemas.RoutingKeyReclamoRechazado,
 	}
 }
 

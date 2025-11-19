@@ -43,15 +43,26 @@ type CreateReclamoResponse struct {
 	Message   string    `json:"message"`
 }
 
-// GetAllReclamos obtiene todos los reclamos
-func GetAllReclamos() ([]Reclamo, error) {
+// GetAllReclamos obtiene todos los reclamos, opcionalmente filtrados por estado
+func GetAllReclamos(estadoFiltro string) ([]Reclamo, error) {
 	if config.DB == nil {
 		return nil, fmt.Errorf("database connection not available")
 	}
 
 	var reclamos []Reclamo
-	query := "SELECT * FROM Reclamos ORDER BY fecha DESC"
-	result := config.DB.Raw(query).Scan(&reclamos)
+	var query string
+	var result interface{ Error() error }
+
+	if estadoFiltro != "" {
+		// Si hay filtro de estado, aplicarlo
+		query = "SELECT * FROM Reclamos WHERE estado = ? ORDER BY fecha DESC"
+		result = config.DB.Raw(query, estadoFiltro).Scan(&reclamos)
+	} else {
+		// Sin filtro, traer todos
+		query = "SELECT * FROM Reclamos ORDER BY fecha DESC"
+		result = config.DB.Raw(query).Scan(&reclamos)
+	}
+
 	if result.Error() != nil {
 		return nil, fmt.Errorf("error getting reclamos: %v", result.Error())
 	}

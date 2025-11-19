@@ -1,4 +1,4 @@
-﻿package eventhandlers
+package eventhandlers
 
 import (
 	"context"
@@ -15,38 +15,41 @@ import (
 // EventoCulturaHandler maneja eventos de creación de eventos culturales
 // Crea un tacho fake con id_tipo = 4 (Evento) para visualización en mapa
 func EventoCulturaHandler(d amqp.Delivery) error {
-	log.Println("Evento cultura.evento.crear recibido")
-	log.Printf("Body raw completo: %s", string(d.Body))
+	log.Println("========================================")
+	log.Println("📢 Evento cultura.evento.crear recibido")
+	log.Println("========================================")
+
+	log.Printf("📄 Body raw completo: %s", string(d.Body))
 
 	// PASO 1: Intentar parsear como objeto con campo "content"
 	var wrapperWithContent struct {
 		Content string `json:"content"`
 	}
-
+	
 	var payloadMap map[string]interface{}
-
+	
 	if err := json.Unmarshal(d.Body, &wrapperWithContent); err == nil && wrapperWithContent.Content != "" {
-		log.Println("Detectado formato con campo 'content' (JSON string)")
-
+		log.Println("✅ Detectado formato con campo 'content' (JSON string)")
+		
 		// Parsear el content (que es un JSON string)
 		var contentData map[string]interface{}
 		if err := json.Unmarshal([]byte(wrapperWithContent.Content), &contentData); err != nil {
-			log.Printf("Error parseando content string: %v", err)
+			log.Printf("❌ Error parseando content string: %v", err)
 			return fmt.Errorf("error parsing content: %v", err)
 		}
-
+		
 		// Extraer el campo "data" que tiene el evento real
 		if data, ok := contentData["data"].(map[string]interface{}); ok {
 			payloadMap = data
 		} else {
-			log.Println("No se encontro campo 'data', usando contentData completo")
+			log.Println("⚠️  No se encontró campo 'data', usando contentData completo")
 			payloadMap = contentData
 		}
 	} else {
 		// Si no tiene campo "content", parsear directo
-		log.Println("No se detecto campo 'content' - parseando body directo")
+		log.Println("⚠️  No se detectó campo 'content' - parseando body directo")
 		if err := json.Unmarshal(d.Body, &payloadMap); err != nil {
-			log.Printf("Error parseando payload directo: %v", err)
+			log.Printf("❌ Error parseando payload directo: %v", err)
 			return err
 		}
 	}
@@ -56,33 +59,33 @@ func EventoCulturaHandler(d amqp.Delivery) error {
 	descripcionEvento := getStringValue(payloadMap, "description")
 	fechaEventoStr := getStringValue(payloadMap, "date")
 	horaEvento := getStringValue(payloadMap, "time")
-
-	log.Printf("Evento: %s", nombreEvento)
-	log.Printf("Descripcion: %s", descripcionEvento)
-	log.Printf("Fecha: %s", fechaEventoStr)
-	log.Printf("Hora: %s", horaEvento)
+	
+	log.Printf("📋 Evento: %s", nombreEvento)
+	log.Printf("📋 Descripción: %s", descripcionEvento)
+	log.Printf("📋 Fecha: %s", fechaEventoStr)
+	log.Printf("📋 Hora: %s", horaEvento)
 
 	// PASO 3: Extraer coordenadas y datos del lugar
 	var lat, lng float64
 	var nombreLugar, direccion, categoria string
-
+	
 	if culturalPlace, ok := payloadMap["culturalPlaceId"].(map[string]interface{}); ok {
 		nombreLugar = getStringValue(culturalPlace, "name")
 		categoria = getStringValue(culturalPlace, "category")
-
-		log.Printf("Lugar: %s", nombreLugar)
-		log.Printf("Categoria: %s", categoria)
-
+		
+		log.Printf("📍 Lugar: %s", nombreLugar)
+		log.Printf("📍 Categoría: %s", categoria)
+		
 		if contact, ok := culturalPlace["contact"].(map[string]interface{}); ok {
 			direccion = getStringValue(contact, "address")
-			log.Printf("Direccion: %s", direccion)
-
+			log.Printf("📍 Dirección: %s", direccion)
+			
 			if coordinates, ok := contact["coordinates"].(map[string]interface{}); ok {
 				if coords, ok := coordinates["coordinates"].([]interface{}); ok && len(coords) >= 2 {
 					// GeoJSON usa [lng, lat]
 					lng = getFloatValue(coords[0])
 					lat = getFloatValue(coords[1])
-					log.Printf("Coordenadas: lat=%v, lng=%v", lat, lng)
+					log.Printf("📍 Coordenadas: lat=%v, lng=%v", lat, lng)
 				}
 			}
 		}
@@ -90,106 +93,102 @@ func EventoCulturaHandler(d amqp.Delivery) error {
 
 	// Validar que tenemos coordenadas
 	if lat == 0 && lng == 0 {
-		log.Println("No se pudieron extraer coordenadas validas del evento")
-		return fmt.Errorf("coordenadas invalidas")
+		log.Println("❌ No se pudieron extraer coordenadas válidas del evento")
+		return fmt.Errorf("coordenadas inválidas")
 	}
 
 	// PASO 4: Parsear fecha del evento
 	fechaEvento, err := time.Parse(time.RFC3339, fechaEventoStr)
 	if err != nil {
-		log.Printf("Error parseando fecha, usando fecha actual: %v", err)
+		log.Printf("⚠️  Error parseando fecha, usando fecha actual: %v", err)
 		fechaEvento = time.Now()
 	}
 
 	// PASO 5: Crear descripción completa para el tacho
 	descripcionCompleta := fmt.Sprintf("Evento: %s | Lugar: %s | Fecha: %s %s",
 		nombreEvento, nombreLugar, fechaEvento.Format("02/01/2006"), horaEvento)
-
-	observaciones := fmt.Sprintf("Categoria: %s | %s | Direccion: %s",
+	
+	observaciones := fmt.Sprintf("Categoría: %s | %s | Dirección: %s",
 		categoria, descripcionEvento, direccion)
 
-	log.Printf("Descripcion tacho: %s", descripcionCompleta)
-	log.Printf("Observaciones: %s", observaciones)
+	log.Printf("� Descripción tacho: %s", descripcionCompleta)
+	log.Printf("📝 Observaciones: %s", observaciones)
 
 	// PASO 6: Crear tacho fake en MongoDB
-	mongoCollection, err := config.GetMongoCollection("tachos")
+	bin := models.Bin{
+		BinType: 4, // Tipo "Evento Cultural"
+		Lat:     lat,
+		Lng:     lng,
+	}
+
+	collection := config.MongoClient.Database("binsDB").Collection("bins")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, err := collection.InsertOne(ctx, bin)
 	if err != nil {
-		log.Printf("Error obteniendo coleccion MongoDB: %v", err)
-		return fmt.Errorf("error getting mongo collection: %v", err)
+		log.Printf("❌ [EventoCultura] Error insertando bin en MongoDB: %v", err)
+		return fmt.Errorf("error insertando bin: %v", err)
 	}
 
-	// Obtener el último ID de MongoDB para generar uno nuevo
-	ctx := context.Background()
-	var lastTacho struct {
-		ID int `bson:"id"`
-	}
-	opts := options.FindOne().SetSort(map[string]int{"id": -1})
-	err = mongoCollection.FindOne(ctx, map[string]interface{}{}, opts).Decode(&lastTacho)
+	mongoID := result.InsertedID
+	log.Printf("✅ [EventoCultura] Bin insertado en MongoDB con ID: %v", mongoID)
 
-	mongoID := 1 // ID por defecto si no hay documentos
-	if err == nil {
-		mongoID = lastTacho.ID + 1
-	}
-
-	// Insertar en MongoDB con el formato correcto
-	tachoDoc := map[string]interface{}{
-		"id":  mongoID,
-		"lat": lat,
-		"lon": lng,
-	}
-
-	_, err = mongoCollection.InsertOne(ctx, tachoDoc)
+	// PASO 7: Buscar el ID auto-generado en MongoDB para usarlo en MySQL
+	var insertedBin models.Bin
+	err = collection.FindOne(ctx, bson.M{"_id": mongoID}).Decode(&insertedBin)
 	if err != nil {
-		log.Printf("Error insertando tacho en MongoDB: %v", err)
-		return fmt.Errorf("error inserting tacho in MongoDB: %v", err)
+		log.Printf("❌ [EventoCultura] Error obteniendo bin insertado: %v", err)
+		return fmt.Errorf("error obteniendo bin: %v", err)
 	}
 
-	log.Printf("Tacho insertado en MongoDB con ID: %d", mongoID)
-
-	// PASO 7: Crear tacho fake en MySQL con id_tipo = 4 (Evento) + campos opcionales
+	// PASO 8: Crear tacho fake en MySQL con id_tipo = 4 (Evento) + campos opcionales
 	query := `
-		INSERT INTO Tacho (
-			id_tipo, 
-			id_estado,
+		INSERT INTO Tachos (
 			id_mongo, 
-			capacidad,
+			id_persona, 
+			id_tipo, 
+			lat, 
+			lng, 
+			capacidad_maxima, 
+			nivel_llenado, 
+			estado,
 			descripcion,
 			observaciones,
 			fecha_instalacion
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, 4, ?, ?, 100, 0, 'Operativo', ?, ?, ?)
 	`
 
-	result := config.DB.Exec(query,
-		4,                   // id_tipo = 4 (Evento Cultural)
-		1,                   // id_estado = 1 (activo)
-		mongoID,             // id_mongo (ID de MongoDB)
-		0.0,                 // capacidad = 0 (tacho fake)
+	if result := config.DB.Exec(query,
+		insertedBin.ID,      // id_mongo
+		0,                   // id_persona (0 = sistema)
+		lat,                 // lat
+		lng,                 // lng
 		descripcionCompleta, // descripcion (nombre evento + lugar + fecha)
 		observaciones,       // observaciones (categoría + descripción + dirección)
 		fechaEvento,         // fecha_instalacion (fecha del evento)
-	)
-
-	if result.Error() != nil {
-		log.Printf("Error insertando tacho en MySQL: %v", result.Error())
-		// Intentar eliminar de MongoDB si falla MySQL
-		mongoCollection.DeleteOne(ctx, map[string]interface{}{"id": mongoID})
-		return fmt.Errorf("error inserting tacho in MySQL: %v", result.Error())
+	); result.Error() != nil {
+		log.Printf("❌ [EventoCultura] Error insertando tacho en MySQL: %v", result.Error())
+		return fmt.Errorf("error insertando tacho: %v", result.Error())
 	}
 
-	// PASO 8: Obtener el ID generado en MySQL
+	// PASO 9: Obtener el ID generado en MySQL
 	var tachoID int64
 	if result := config.DB.Raw("SELECT LAST_INSERT_ID()").Scan(&tachoID); result.Error() != nil {
-		log.Printf("Advertencia: No se pudo obtener ID generado: %v", result.Error())
+		log.Printf("⚠️  [EventoCultura] Advertencia: No se pudo obtener ID generado: %v", result.Error())
 	} else {
-		log.Printf("Tacho creado exitosamente - ID MySQL: %d", tachoID)
-		log.Printf("Evento: %s", nombreEvento)
-		log.Printf("Lugar: %s", nombreLugar)
-		log.Printf("Fecha: %s", fechaEvento.Format("02/01/2006 15:04"))
+		log.Printf("✅ [EventoCultura] Tacho creado exitosamente - ID MySQL: %d", tachoID)
+		log.Printf("   📌 Evento: %s", nombreEvento)
+		log.Printf("   📌 Lugar: %s", nombreLugar)
+		log.Printf("   📌 Fecha: %s", fechaEvento.Format("02/01/2006 15:04"))
 	}
 
-	log.Println("Evento cultural procesado exitosamente")
-	return nil
+	log.Println("========================================")
+	log.Printf("✅ Evento cultural procesado exitosamente")
+	log.Println("========================================")
+
+	return nil // ACK el mensaje
 }
 
 // getStringValue extrae un valor string de un map de forma segura
@@ -217,3 +216,4 @@ func getFloatValue(val interface{}) float64 {
 		return 0
 	}
 }
+

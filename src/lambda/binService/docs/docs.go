@@ -828,7 +828,7 @@ const docTemplate = `{
         },
         "/reclamos": {
             "get": {
-                "description": "Devuelve una lista de todos los reclamos",
+                "description": "Devuelve una lista de todos los reclamos. Opcionalmente se puede filtrar por estado usando el query parameter ?estado=PENDIENTE",
                 "consumes": [
                     "application/json"
                 ],
@@ -839,6 +839,14 @@ const docTemplate = `{
                     "Reclamos"
                 ],
                 "summary": "Obtener todos los reclamos",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filtrar por estado (ej: PENDIENTE, ESPERA_INFO, RECHAZADO, RESUELTO)",
+                        "name": "estado",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Lista de reclamos",
