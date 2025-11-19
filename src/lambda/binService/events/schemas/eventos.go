@@ -141,6 +141,27 @@ type RecoleccionReprogramadaPayload struct {
 	ProximaRecoleccion time.Time `json:"proxima_recoleccion"`
 }
 
+// RutaNavegacionPayload es el payload que publicamos con el progreso de navegación de una ruta
+type RutaNavegacionPayload struct {
+	IDRuta               string              `json:"id_ruta"`
+	IndicePuntoActual    int                 `json:"indice_punto_actual"`
+	TotalPuntos          int                 `json:"total_puntos"`
+	PuntoActual          PuntoNavegacion     `json:"punto_actual"`
+	PorcentajeProgreso   float64             `json:"porcentaje_progreso"`
+	InformacionAdicional []InformacionEvento `json:"informacion_adicional,omitempty"`
+}
+
+// PuntoNavegacion representa un punto en la ruta
+type PuntoNavegacion struct {
+	Latitud  float64 `json:"latitud"`
+	Longitud float64 `json:"longitud"`
+}
+
+// InformacionEvento contiene el ID de eventos culturales en ese punto
+type InformacionEvento struct {
+	IDEvento string `json:"id_evento"`
+}
+
 // ========== FORMATO ESTÁNDAR DE ENVELOPE ==========
 
 // EventEnvelope es el formato estándar de todos los eventos según especificación
@@ -208,6 +229,9 @@ const (
 
 	// Recolección - Reprogramación
 	RoutingKeyRecoleccionReprogramadaPub = "residuos.recoleccion.reprogramada"
+
+	// Navegación de rutas - Progreso en tiempo real
+	RoutingKeyRutaNavegacion = "residuos.camion.posicion"
 
 	// ===== EVENTOS QUE CONSUME RESIDUOS (de otros equipos) =====
 
