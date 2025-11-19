@@ -1,10 +1,16 @@
 package handlers
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
+	"time"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events/schemas"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // GetScheduleHandler obtiene la configuración global de horarios
@@ -76,8 +82,50 @@ func UpdateNeighborhoodScheduleHandler(c *gin.Context) {
 		return
 	}
 
+	// Publicar evento de recolección reprogramada
+	if err := publishRecoleccionReprogramadaEvent(c, config); err != nil {
+		log.Printf("⚠️  Error publicando evento de recolección reprogramada: %v", err)
+		// No retornamos error porque el schedule ya se actualizó
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Horario del neighborhood actualizado exitosamente",
 		"config":  config,
 	})
+}
+
+// publishRecoleccionReprogramadaEvent publica el evento cuando se reprograma la recolección
+func publishRecoleccionReprogramadaEvent(c *gin.Context, scheduleConfig *services.GlobalScheduleConfig) error {
+	ctx := c.Request.Context()
+
+	// Crear payload con las fechas de última y próxima recolección
+	payload := schemas.RecoleccionReprogramadaPayload{
+		UltimaRecoleccion:  scheduleConfig.UltimaActualizacionRutas,
+		ProximaRecoleccion: scheduleConfig.ProximaActualizacionRutas,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// Crear envelope estándar
+	envelope := schemas.EventEnvelope{
+		ID:        uuid.New().String(),
+		Timestamp: time.Now(),
+		Source:    "residuos",
+		Topic:     schemas.RoutingKeyRecoleccionReprogramadaPub,
+		Payload:   payloadBytes,
+	}
+
+	// Publicar evento
+	if err := events.Publish(ctx, schemas.RoutingKeyRecoleccionReprogramadaPub, envelope); err != nil {
+		return err
+	}
+
+	log.Printf("✅ [RecoleccionReprogramada] Evento publicado - Routing Key: %s", schemas.RoutingKeyRecoleccionReprogramadaPub)
+	log.Printf("   📅 Última recolección: %s", scheduleConfig.UltimaActualizacionRutas.Format(time.RFC3339))
+	log.Printf("   📅 Próxima recolección: %s", scheduleConfig.ProximaActualizacionRutas.Format(time.RFC3339))
+
+	return nil
 }

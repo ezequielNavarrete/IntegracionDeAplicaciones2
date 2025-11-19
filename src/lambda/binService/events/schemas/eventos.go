@@ -135,6 +135,12 @@ type ReclamoEstadoEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// RecoleccionReprogramadaPayload es el payload que publicamos cuando se reprograma la recolección
+type RecoleccionReprogramadaPayload struct {
+	UltimaRecoleccion  time.Time `json:"ultima_recoleccion"`
+	ProximaRecoleccion time.Time `json:"proxima_recoleccion"`
+}
+
 // ========== FORMATO ESTÁNDAR DE ENVELOPE ==========
 
 // EventEnvelope es el formato estándar de todos los eventos según especificación
@@ -184,38 +190,39 @@ type EventoCulturaPayload struct {
 // ========== ROUTING KEYS ==========
 
 const (
-	// Eventos que PUBLICA Residuos
+	// ===== EVENTOS QUE PUBLICA RESIDUOS (residuos.*) =====
+
+	// Tachos
 	RoutingKeyTachoCreado      = "residuos.tacho.creado"
 	RoutingKeyTachoActualizado = "residuos.tacho.actualizado"
 	RoutingKeyTachoEliminado   = "residuos.tacho.eliminado"
 	RoutingKeyTachoLleno       = "residuos.tacho.lleno"
-	RoutingKeyAlertaResuelta   = "residuos.alertavecinal.resuelta"
 
-	// Eventos que PUBLICA Residuos - Cambios de estado de reclamos
+	// Alertas Vecinales
+	RoutingKeyAlertaResuelta = "residuos.alertavecinal.resuelta"
+
+	// Reclamos - Cambios de estado (respuesta a otros módulos)
 	RoutingKeyReclamoResueltoPub   = "residuos.reclamo.resuelto"
 	RoutingKeyReclamoRechazadoPub  = "residuos.reclamo.rechazado"
 	RoutingKeyReclamoEsperaInfoPub = "residuos.reclamo.espera_info"
 
-	// Eventos que CONSUME Residuos (de otros módulos)
-	// De Reclamos (antiguos - deprecar si es necesario)
+	// Recolección - Reprogramación
+	RoutingKeyRecoleccionReprogramadaPub = "residuos.recoleccion.reprogramada"
+
+	// ===== EVENTOS QUE CONSUME RESIDUOS (de otros equipos) =====
+
+	// De Reclamos - Formato antiguo (deprecar si es necesario)
 	RoutingKeyReclamoMalEstado  = "reclamos.tacho.mal_estado"
 	RoutingKeyReclamoLleno      = "reclamos.tacho.lleno"
 	RoutingKeyReclamoRoto       = "reclamos.tacho.roto"
 	RoutingKeyReclamoDesbordado = "reclamos.tacho.desbordado"
 
-	// De Reclamos (nuevos - formato envelope estándar)
+	// De Reclamos - Formato nuevo (envelope estándar)
 	RoutingKeyReclamoResiduoCreado   = "reclamos.residuos.deshecho.creado"
 	RoutingKeyReclamoResiduoDerivado = "reclamos.residuos.derivado"
 
-	// De Emergencias (nuevos - según bindings reales)
-	RoutingKeyAlertaPendiente = "residuos.alertavecinal.pendiente"
-
-	// De Movilidad
-	RoutingKeyRecoleccionReprogramada = "residuos.recoleccion.reprogramada"
-
-	// De Reclamos (resolución de reclamos - CONSUME)
-	RoutingKeyReclamoResuelto  = "residuos.resuelto"
-	RoutingKeyReclamoRechazado = "residuos.reclamos.rechazado"
+	// De Emergencias
+	RoutingKeyAlertaPendiente = "emergencias.alertavecinal.pendiente"
 
 	// De Conductores
 	RoutingKeyRecoleccionCompletada = "conductores.recoleccion.completada"

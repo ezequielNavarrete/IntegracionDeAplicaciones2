@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,24 +16,35 @@ import (
 
 // GetAllReclamosHandler obtiene todos los reclamos
 // @Summary Obtener todos los reclamos
-// @Description Devuelve una lista de todos los reclamos
+// @Description Devuelve una lista de todos los reclamos. Opcionalmente se puede filtrar por estado usando el query parameter ?estado=PENDIENTE
 // @Tags Reclamos
 // @Accept json
 // @Produce json
+// @Param estado query string false "Filtrar por estado (ej: PENDIENTE, ESPERA_INFO, RECHAZADO, RESUELTO)"
 // @Success 200 {array} services.Reclamo "Lista de reclamos"
 // @Failure 500 {object} map[string]string "Error interno del servidor"
 // @Router /reclamos [get]
 func GetAllReclamosHandler(c *gin.Context) {
-	reclamos, err := services.GetAllReclamos()
+	// Obtener filtro opcional de estado desde query params
+	estadoFiltro := c.Query("estado")
+
+	reclamos, err := services.GetAllReclamos(estadoFiltro)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response := gin.H{
 		"reclamos": reclamos,
 		"total":    len(reclamos),
-	})
+	}
+
+	// Agregar el filtro aplicado en la respuesta si existe
+	if estadoFiltro != "" {
+		response["filtro_estado"] = estadoFiltro
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // GetReclamoByIDHandler obtiene un reclamo específico por ID
@@ -171,18 +181,21 @@ func UpdateReclamoEstadoHandler(c *gin.Context) {
 		return
 	}
 
+	// Primero obtener el reclamo para verificar que existe y obtener su ID externo
+	reclamo, err := services.GetReclamoByID(reclamoID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Reclamo no encontrado"})
+		return
+	}
+
 	// Actualizar estado en MySQL
 	if err := services.UpdateReclamoEstado(reclamoID, body.Estado); err != nil {
-		if err.Error() == "reclamo not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Reclamo no encontrado"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar estado del reclamo"})
 		return
 	}
 
-	// Publicar evento a RabbitMQ
-	if err := publishReclamoEstadoEvent(c, reclamoID, body.Estado, body.Comentario); err != nil {
+	// Publicar evento a RabbitMQ usando el reclamo que ya obtuvimos
+	if err := publishReclamoEstadoEvent(c, reclamo, body.Estado, body.Comentario); err != nil {
 		log.Printf("⚠️  [UpdateReclamoEstado] Error publicando evento a RabbitMQ: %v (el estado se actualizó en MySQL)", err)
 		// No retornamos error porque el estado ya se actualizó en MySQL
 	}
@@ -194,20 +207,14 @@ func UpdateReclamoEstadoHandler(c *gin.Context) {
 }
 
 // publishReclamoEstadoEvent publica el evento de cambio de estado a RabbitMQ
-func publishReclamoEstadoEvent(c *gin.Context, reclamoID int, estado, comentario string) error {
-	// Obtener el id_reclamo_externo del reclamo
-	reclamo, err := services.GetReclamoByID(reclamoID)
-	if err != nil {
-		return fmt.Errorf("error obteniendo reclamo: %v", err)
-	}
-
+func publishReclamoEstadoEvent(c *gin.Context, reclamo *services.Reclamo, estado, comentario string) error {
 	// Usar el id_reclamo_externo si existe, sino el id interno
-	idParaPublicar := reclamoID
+	idParaPublicar := reclamo.IDReclamo
 	if reclamo.IDReclamoExterno != nil && *reclamo.IDReclamoExterno > 0 {
 		idParaPublicar = *reclamo.IDReclamoExterno
-		log.Printf("📤 [PublishReclamoEstado] Usando ID externo para publicar: %d (ID interno: %d)", idParaPublicar, reclamoID)
+		log.Printf("📤 [PublishReclamoEstado] Usando ID externo para publicar: %d (ID interno: %d)", idParaPublicar, reclamo.IDReclamo)
 	} else {
-		log.Printf("📤 [PublishReclamoEstado] Usando ID interno para publicar: %d (no tiene ID externo)", reclamoID)
+		log.Printf("📤 [PublishReclamoEstado] Usando ID interno para publicar: %d (no tiene ID externo)", reclamo.IDReclamo)
 	}
 
 	// Determinar routing key según el estado
@@ -252,7 +259,7 @@ func publishReclamoEstadoEvent(c *gin.Context, reclamoID int, estado, comentario
 	}
 
 	log.Printf("✅ [UpdateReclamoEstado] Evento publicado - Routing Key: %s, Reclamo ID: %d, Estado: %s",
-		routingKey, reclamoID, estado)
+		routingKey, reclamo.IDReclamo, estado)
 
 	return nil
 }
