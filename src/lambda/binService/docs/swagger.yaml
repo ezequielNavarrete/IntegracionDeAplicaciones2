@@ -1044,7 +1044,13 @@ paths:
     get:
       consumes:
       - application/json
-      description: Devuelve una lista de todos los reclamos
+      description: Devuelve una lista de todos los reclamos. Opcionalmente se puede
+        filtrar por estado usando el query parameter ?estado=PENDIENTE
+      parameters:
+      - description: 'Filtrar por estado (ej: PENDIENTE, ESPERA_INFO, RECHAZADO, RESUELTO)'
+        in: query
+        name: estado
+        type: string
       produces:
       - application/json
       responses:
