@@ -191,7 +191,7 @@ func GetAllTachos() ([]TachoCompleto, error) {
 			ec.nombre as caracteristica_estado,
 			ec.prioridad as caracteristica_prioridad
 		FROM Tacho t
-		LEFT JOIN Tipo_Tacho tt ON t.id_tipo = tt.id_tipo
+		LEFT JOIN Tipo_tacho tt ON t.id_tipo = tt.id_tipo
 		LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
 		LEFT JOIN Lista_caracteristica_tacho lct ON t.id_tacho = lct.id_tacho
 		LEFT JOIN Caracteristica_tacho ct ON lct.id_caracteristica = ct.id_caracteristica
@@ -242,17 +242,17 @@ func GetAllTachos() ([]TachoCompleto, error) {
 				Caracteristicas: []CaracteristicaTacho{},
 			}
 
-			// Buscar coordenadas en MongoDB
-			if mongoData, found := coordsMap[row.IDMongo]; found {
-				tacho.Latitud = mongoData.Lat
-				tacho.Longitud = mongoData.Lon
-				tacho.Neighborhood = mongoData.Neighborhood
-			}
-
-			tachosMap[row.IDTacho] = tacho
+		// Buscar coordenadas en MongoDB
+		if mongoData, found := coordsMap[row.IDMongo]; found {
+			// MongoDB tiene coordenadas invertidas, las intercambiamos antes de devolver
+			latReal, lonReal := SwapCoordinates(mongoData.Lat, mongoData.Lon)
+			tacho.Latitud = latReal
+			tacho.Longitud = lonReal
+			tacho.Neighborhood = mongoData.Neighborhood
 		}
 
-		// Agregar característica si existe
+		tachosMap[row.IDTacho] = tacho
+	}		// Agregar característica si existe
 		if row.CaracteristicaNombre != nil && row.CaracteristicaEstado != nil && row.CaracteristicaPrioridad != nil {
 			caracteristica := CaracteristicaTacho{
 				Nombre:    *row.CaracteristicaNombre,
@@ -291,7 +291,7 @@ func GetTachoByID(tachoID int) (*TachoCompleto, error) {
 			ec.nombre as caracteristica_estado,
 			ec.prioridad as caracteristica_prioridad
 		FROM Tacho t
-		LEFT JOIN Tipo_Tacho tt ON t.id_tipo = tt.id_tipo
+		LEFT JOIN Tipo_tacho tt ON t.id_tipo = tt.id_tipo
 		LEFT JOIN Estado_tacho et ON t.id_estado = et.id_estado
 		LEFT JOIN Lista_caracteristica_tacho lct ON t.id_tacho = lct.id_tacho
 		LEFT JOIN Caracteristica_tacho ct ON lct.id_caracteristica = ct.id_caracteristica
@@ -344,8 +344,10 @@ func GetTachoByID(tachoID int) (*TachoCompleto, error) {
 		coordsMap, err := GetAllTachosFromMongoDB()
 		if err == nil {
 			if mongoData, found := coordsMap[firstRow.IDMongo]; found {
-				tacho.Latitud = mongoData.Lat
-				tacho.Longitud = mongoData.Lon
+				// MongoDB tiene coordenadas invertidas, las intercambiamos antes de devolver
+				latReal, lonReal := SwapCoordinates(mongoData.Lat, mongoData.Lon)
+				tacho.Latitud = latReal
+				tacho.Longitud = lonReal
 				tacho.Neighborhood = mongoData.Neighborhood
 			}
 		}

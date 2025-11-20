@@ -23,15 +23,13 @@ func GetHandlers() map[string]HandlerFunc {
 		schemas.RoutingKeyReclamoResiduoCreado:   ReclamoResiduoHandler,
 		schemas.RoutingKeyReclamoResiduoDerivado: ReclamoResiduoHandler, // Reutiliza el mismo handler
 
-		// Eventos de Conductores (recolecciones completadas)
-		schemas.RoutingKeyRecoleccionCompletada: RecoleccionHandler,
-
 		// Eventos de Cultura (solo logging por ahora)
 		schemas.RoutingKeyEventoCulturaCrear:    EventoCulturaHandler,
 		schemas.RoutingKeyEventoCulturaCancelar: EventoCulturaCanceladoHandler,
 
 		// Nuevos handlers de otros módulos
-		schemas.RoutingKeyAlertaPendiente: AlertaVecinalHandler, // De Emergencia
+		schemas.RoutingKeyAlertaPendiente:          AlertaVecinalHandler, // De Emergencia - pendiente
+		schemas.RoutingKeyEmergenciaAlertaResuelta: AlertaResueltaHandler, // De Emergencia - resuelta
 		// De Reclamos (rechazo)
 	}
 }
@@ -52,15 +50,13 @@ func GetRoutingKeys() []string {
 		// Patrón wildcard para cualquier reclamo de tachos (backup)
 		"reclamos.tacho.#",
 
-		// Recolecciones
-		schemas.RoutingKeyRecoleccionCompletada,
-
 		// Cultura
 		schemas.RoutingKeyEventoCulturaCrear,
 		schemas.RoutingKeyEventoCulturaCancelar,
 
 		// Emergencias
 		schemas.RoutingKeyAlertaPendiente,
+		schemas.RoutingKeyEmergenciaAlertaResuelta,
 	}
 }
 
@@ -84,7 +80,7 @@ func ProcessMessage(d amqp.Delivery) {
 	if err := handler(d); err != nil {
 		log.Printf("❌ Error procesando mensaje [%s]: %v", d.RoutingKey, err)
 		log.Printf("🗑️  Mensaje descartado (NO se reencola): %s", string(d.Body))
-		
+
 		// Hacer NACK sin reencolar (requeue = false)
 		// Esto descarta el mensaje definitivamente
 		d.Nack(false, false) // multiple=false, requeue=false

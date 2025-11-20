@@ -112,7 +112,7 @@ func EventoCulturaHandler(d amqp.Delivery) error {
 	log.Printf("Observaciones: %s", observaciones)
 
 	// PASO 6: Crear tacho fake en MongoDB
-	mongoCollection, err := config.GetMongoCollection("tachos")
+	mongoCollection, err := config.GetMongoCollection("bins")
 	if err != nil {
 		log.Printf("Error obteniendo coleccion MongoDB: %v", err)
 		return fmt.Errorf("error getting mongo collection: %v", err)
@@ -137,11 +137,16 @@ func EventoCulturaHandler(d amqp.Delivery) error {
 		idEvento = getStringValue(payloadMap, "id")
 	}
 
-	// Insertar en MongoDB con el formato correcto
+	// INVERTIR coordenadas para mantener consistencia con tachos existentes
+	// MongoDB espera {lat: lng, lon: lat} invertido
+	log.Printf("Coordenadas originales - lat: %v, lng: %v", lat, lng)
+	log.Printf("Guardando invertidas en MongoDB - lat: %v, lon: %v", lng, lat)
+
+	// Insertar en MongoDB con coordenadas INVERTIDAS
 	tachoDoc := map[string]interface{}{
 		"id":        mongoID,
-		"lat":       lat,
-		"lon":       lng,
+		"lat":       lng, // INVERTIDO: guardamos lng en campo lat
+		"lon":       lat, // INVERTIDO: guardamos lat en campo lon
 		"id_evento": idEvento, // ID del evento cultural
 	}
 
@@ -151,7 +156,7 @@ func EventoCulturaHandler(d amqp.Delivery) error {
 		return fmt.Errorf("error inserting tacho in MongoDB: %v", err)
 	}
 
-	log.Printf("Tacho insertado en MongoDB con ID: %d", mongoID)
+	log.Printf("Tacho insertado en MongoDB con ID: %d (coords invertidas)", mongoID)
 
 	// PASO 7: Crear tacho fake en MySQL con id_tipo = 4 (Evento) + campos opcionales
 	query := `

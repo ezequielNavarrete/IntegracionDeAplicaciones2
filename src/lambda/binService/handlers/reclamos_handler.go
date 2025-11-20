@@ -172,11 +172,12 @@ func UpdateReclamoEstadoHandler(c *gin.Context) {
 		"ESPERA_INFO": true,
 		"RECHAZADO":   true,
 		"RESUELTO":    true,
+		"EN_PROCESO":  true, // Para emergencias
 	}
 
 	if !estadosPermitidos[body.Estado] {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Estado inválido. Estados permitidos: ESPERA_INFO, RECHAZADO, RESUELTO",
+			"error": "Estado inválido. Estados permitidos: ESPERA_INFO, RECHAZADO, RESUELTO, EN_PROCESO",
 		})
 		return
 	}
@@ -217,17 +218,33 @@ func publishReclamoEstadoEvent(c *gin.Context, reclamo *services.Reclamo, estado
 		log.Printf("📤 [PublishReclamoEstado] Usando ID interno para publicar: %d (no tiene ID externo)", reclamo.IDReclamo)
 	}
 
-	// Determinar routing key según el estado
+	// Determinar routing key según el tipo de origen y el estado
 	var routingKey string
-	switch estado {
-	case "RESUELTO":
-		routingKey = schemas.RoutingKeyReclamoResueltoPub
-	case "RECHAZADO":
-		routingKey = schemas.RoutingKeyReclamoRechazadoPub
-	case "ESPERA_INFO":
-		routingKey = schemas.RoutingKeyReclamoEsperaInfoPub
-	default:
-		return nil // No publicar si no es un estado conocido
+
+	// Si es emergencia, usar routing keys de BI
+	if reclamo.TipoOrigen == "emergencia" {
+		log.Printf("📋 [PublishReclamoEstado] Reclamo origen emergencia detectado - usando routing keys de BI")
+		switch estado {
+		case "RESUELTO":
+			routingKey = schemas.RoutingKeyEmergenciaResuelta // residuos.bi.resuelta
+		case "EN_PROCESO", "RECHAZADO", "ESPERA_INFO":
+			routingKey = schemas.RoutingKeyEmergenciaPendiente // residuos.bi.pendiente
+		default:
+			return nil
+		}
+	} else {
+		// Si es reclamo normal, usar routing keys tradicionales
+		log.Printf("📋 [PublishReclamoEstado] Reclamo origen reclamo - usando routing keys tradicionales")
+		switch estado {
+		case "RESUELTO":
+			routingKey = schemas.RoutingKeyReclamoResueltoPub
+		case "RECHAZADO":
+			routingKey = schemas.RoutingKeyReclamoRechazadoPub
+		case "ESPERA_INFO":
+			routingKey = schemas.RoutingKeyReclamoEsperaInfoPub
+		default:
+			return nil // No publicar si no es un estado conocido
+		}
 	}
 
 	// Crear payload del evento con el ID externo
@@ -258,8 +275,8 @@ func publishReclamoEstadoEvent(c *gin.Context, reclamo *services.Reclamo, estado
 		return err
 	}
 
-	log.Printf("✅ [UpdateReclamoEstado] Evento publicado - Routing Key: %s, Reclamo ID: %d, Estado: %s",
-		routingKey, reclamo.IDReclamo, estado)
+	log.Printf("✅ [UpdateReclamoEstado] Evento publicado - Routing Key: %s, Reclamo ID: %d, Estado: %s, Tipo Origen: %s",
+		routingKey, reclamo.IDReclamo, estado, reclamo.TipoOrigen)
 
 	return nil
 }

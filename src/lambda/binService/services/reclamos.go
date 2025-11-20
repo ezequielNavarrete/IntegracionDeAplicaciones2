@@ -21,6 +21,7 @@ type Reclamo struct {
 	Lng              float64   `json:"lng" gorm:"column:lng"`
 	Fecha            time.Time `json:"fecha" gorm:"column:fecha"`
 	IDReclamoExterno *int      `json:"id_reclamo_externo,omitempty" gorm:"column:id_reclamo_externo"` // ID del reclamo en el sistema externo
+	TipoOrigen       string    `json:"tipo_origen" gorm:"column:tipo_origen;default:'reclamo'"`        // 'reclamo' o 'emergencia'
 }
 
 // CreateReclamoRequest representa la solicitud para crear un reclamo
@@ -67,6 +68,11 @@ func GetAllReclamos(estadoFiltro string) ([]Reclamo, error) {
 		return nil, fmt.Errorf("error getting reclamos: %v", result.Error())
 	}
 
+	// MongoDB tiene coordenadas invertidas, las intercambiamos antes de devolver
+	for i := range reclamos {
+		reclamos[i].Lat, reclamos[i].Lng = SwapCoordinates(reclamos[i].Lat, reclamos[i].Lng)
+	}
+
 	return reclamos, nil
 }
 
@@ -86,6 +92,9 @@ func GetReclamoByID(reclamoID int) (*Reclamo, error) {
 	if reclamo.IDReclamo == 0 {
 		return nil, fmt.Errorf("reclamo not found")
 	}
+
+	// MongoDB tiene coordenadas invertidas, las intercambiamos antes de devolver
+	reclamo.Lat, reclamo.Lng = SwapCoordinates(reclamo.Lat, reclamo.Lng)
 
 	return &reclamo, nil
 }

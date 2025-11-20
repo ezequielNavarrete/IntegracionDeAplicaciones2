@@ -106,3 +106,10 @@ func PublishWithConfirm(ctx context.Context, routingKey string, payload interfac
 		return fmt.Errorf("timeout esperando confirmación del evento")
 	}
 }
+
+// PublishDirect publica un evento sin necesidad de contexto HTTP (útil para handlers de eventos)
+func PublishDirect(routingKey string, payload interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return Publish(ctx, routingKey, payload)
+}
