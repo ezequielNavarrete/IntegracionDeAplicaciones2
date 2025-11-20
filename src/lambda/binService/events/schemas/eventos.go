@@ -191,6 +191,7 @@ type ReclamoResiduoPayload struct {
 // ReclamoEstadoCambiadoPayload es el payload cuando cambia el estado de un reclamo
 type ReclamoEstadoCambiadoPayload struct {
 	IDReclamo      int       `json:"id_reclamo"`
+	Comuna         *int      `json:"comuna,omitempty"` // Nueva: comuna calculada por coordenadas
 	Comentario     string    `json:"comentario"`
 	Estado         string    `json:"estado"` // "RESUELTO", "RECHAZADO", "ESPERA_INFO"
 	FechaRespuesta time.Time `json:"fechaRespuesta"`

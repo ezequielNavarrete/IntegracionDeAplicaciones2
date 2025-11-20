@@ -248,8 +248,20 @@ func publishReclamoEstadoEvent(c *gin.Context, reclamo *services.Reclamo, estado
 	}
 
 	// Crear payload del evento con el ID externo
+	// Obtener comuna (neighborhood) desde servicio externo usando lat/lng del reclamo
+	var comunaPtr *int
+	if reclamo.Lat != 0 || reclamo.Lng != 0 { // Si tenemos coordenadas
+		if comuna, err := services.GetNeighborhoodByCoordinates(reclamo.Lat, reclamo.Lng); err != nil {
+			log.Printf("⚠️  [PublishReclamoEstado] No se pudo determinar comuna para reclamo %d: %v", reclamo.IDReclamo, err)
+		} else {
+			comunaPtr = comuna
+		}
+	} else {
+		log.Printf("⚠️  [PublishReclamoEstado] Reclamo %d sin coordenadas válidas para obtener comuna", reclamo.IDReclamo)
+	}
 	payload := schemas.ReclamoEstadoCambiadoPayload{
 		IDReclamo:      idParaPublicar, // Usar ID externo del sistema de Reclamos
+		Comuna:         comunaPtr,
 		Comentario:     comentario,
 		Estado:         estado,
 		FechaRespuesta: time.Now(),
