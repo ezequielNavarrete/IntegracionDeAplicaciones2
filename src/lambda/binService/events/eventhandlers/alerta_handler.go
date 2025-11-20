@@ -16,16 +16,17 @@ import (
 // AlertaVecinalHandler maneja alertas de emergencias (pendientes)
 // Las guarda como reclamos con tipo_origen = 'emergencia'
 func AlertaVecinalHandler(d amqp.Delivery) error {
-	return handleEmergenciaAlert(d, "EN_PROCESO")
+	return handleEmergenciaAlert(d, "EN_PROCESO", true) // true = publicar evento automáticamente
 }
 
 // AlertaResueltaHandler maneja alertas de emergencias resueltas
+// Cambia el estado a ESPERA_INFO sin disparar evento (se dispara al cambio manual a RESUELTO)
 func AlertaResueltaHandler(d amqp.Delivery) error {
-	return handleEmergenciaAlert(d, "RESUELTO")
+	return handleEmergenciaAlert(d, "ESPERA_INFO", false) // false = no publicar evento
 }
 
 // handleEmergenciaAlert es el handler común para ambos tipos de alertas
-func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
+func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string, publicarEvento bool) error {
 	log.Println("========================================")
 	log.Printf("🚨 Evento emergencias.alerta recibido - Estado: %s", estadoForzado)
 	log.Println("========================================")
@@ -34,11 +35,11 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
 
 	// Parsear el payload directamente (viene sin envelope estándar)
 	var payload struct {
-		ID             string  `json:"id"`
-		Source         string  `json:"source"`
-		Timestamp      string  `json:"timestamp"`
-		Topic          string  `json:"topic"`
-		Payload        map[string]interface{} `json:"payload"`
+		ID        string                 `json:"id"`
+		Source    string                 `json:"source"`
+		Timestamp string                 `json:"timestamp"`
+		Topic     string                 `json:"topic"`
+		Payload   map[string]interface{} `json:"payload"`
 	}
 
 	if err := json.Unmarshal(d.Body, &payload); err != nil {
@@ -48,7 +49,7 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
 
 	// Extraer datos del payload interno
 	innerPayload := payload.Payload
-	
+
 	prioridad := getStringFromMap(innerPayload, "prioridad")
 	estado := getStringFromMap(innerPayload, "estado")
 	tipoEmergencia := getStringFromMap(innerPayload, "tipo_emergencia")
@@ -57,7 +58,7 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
 	contexto := getStringFromMap(innerPayload, "contexto")
 	idReclamo := getStringFromMap(innerPayload, "id_reclamo")
 	idEmergencia := getStringFromMap(innerPayload, "id_emergencia")
-	
+
 	var comuna *int
 	if comunaVal, ok := innerPayload["comuna"].(float64); ok {
 		comunaInt := int(comunaVal)
@@ -89,7 +90,7 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
 	// INVERTIR coordenadas para mantener consistencia con la BD
 	log.Printf("Coordenadas originales - lat: %v, lng: %v", lat, lng)
 	log.Printf("Guardando invertidas en MySQL - lat: %v, lng: %v", lng, lat)
-	
+
 	latStr := fmt.Sprintf("%v", lng) // INVERTIDO
 	lngStr := fmt.Sprintf("%v", lat) // INVERTIDO
 
@@ -101,18 +102,18 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
 		IDReclamo    int    `gorm:"column:id_reclamo"`
 		EstadoActual string `gorm:"column:estado"`
 	}
-	
+
 	// Buscar por descripcion que contiene el id_emergencia
 	checkQuery := `SELECT id_reclamo, estado FROM Reclamos WHERE tipo_origen = 'emergencia' AND descripcion LIKE ? LIMIT 1`
 	searchPattern := fmt.Sprintf("%%ID: %s%%", idEmergencia)
-	
+
 	result := config.DB.Raw(checkQuery, searchPattern).Scan(&existingReclamo)
-	
+
 	if result.Error() == nil && existingReclamo.IDReclamo > 0 {
 		// Ya existe el reclamo - ACTUALIZAR
 		log.Printf("🔄 [AlertaVecinal] Reclamo existente encontrado - ID: %d, Estado actual: %s → Nuevo estado: %s",
 			existingReclamo.IDReclamo, existingReclamo.EstadoActual, estadoReclamo)
-		
+
 		// Solo actualizar si el estado cambió
 		if existingReclamo.EstadoActual != estadoReclamo {
 			updateQuery := `UPDATE Reclamos SET estado = ?, descripcion = ? WHERE id_reclamo = ?`
@@ -120,32 +121,36 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
 				log.Printf("❌ [AlertaVecinal] Error actualizando estado del reclamo: %v", result.Error())
 				return fmt.Errorf("error actualizando reclamo: %v", result.Error())
 			}
-			
+
 			log.Printf("✅ [AlertaVecinal] Reclamo actualizado - ID: %d, Nuevo Estado: %s",
 				existingReclamo.IDReclamo, estadoReclamo)
-			
-			// Publicar evento automáticamente via HTTP call interno
-			go func() {
-				if err := publishEstadoViaHTTP(existingReclamo.IDReclamo, estadoReclamo); err != nil {
-					log.Printf("⚠️  [AlertaVecinal] Error publicando estado via HTTP: %v", err)
-				} else {
-					log.Printf("📤 [AlertaVecinal] Evento publicado a BI automáticamente")
-				}
-			}()
+
+			// Publicar evento automáticamente solo si está habilitado
+			if publicarEvento {
+				go func() {
+					if err := publishEstadoViaHTTP(existingReclamo.IDReclamo, estadoReclamo); err != nil {
+						log.Printf("⚠️  [AlertaVecinal] Error publicando estado via HTTP: %v", err)
+					} else {
+						log.Printf("📤 [AlertaVecinal] Evento publicado a BI automáticamente")
+					}
+				}()
+			} else {
+				log.Printf("ℹ️  [AlertaVecinal] Publicación de evento omitida (estado: %s)", estadoReclamo)
+			}
 		} else {
 			log.Printf("ℹ️  [AlertaVecinal] Estado sin cambios - ID: %d, Estado: %s",
 				existingReclamo.IDReclamo, estadoReclamo)
 		}
-		
+
 		log.Println("========================================")
 		log.Println("✅ Emergencia actualizada exitosamente")
 		log.Println("========================================")
 		return nil
 	}
-	
+
 	// No existe - CREAR NUEVO
 	log.Println("➕ [AlertaVecinal] Reclamo no existe - creando nuevo...")
-	
+
 	// Agregar ID emergencia a la descripcion para poder buscarlo después
 	descripcion = fmt.Sprintf("%s | ID: %s", descripcion, idEmergencia)
 
@@ -178,16 +183,16 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string) error {
 	}
 
 	if result := config.DB.Exec(query,
-		1,                 // id_persona (1 = sistema)
-		idReclamoExterno,  // id_reclamo_externo
-		titulo,            // titulo
-		descripcion,       // descripcion
-		estadoReclamo,     // estado (RESUELTO o EN_PROCESO)
-		prioridad,         // prioridad
-		direccion,         // direccion
-		latStr,            // lat
-		lngStr,            // lng
-		comuna,            // comuna
+		1,                // id_persona (1 = sistema)
+		idReclamoExterno, // id_reclamo_externo
+		titulo,           // titulo
+		descripcion,      // descripcion
+		estadoReclamo,    // estado (RESUELTO o EN_PROCESO)
+		prioridad,        // prioridad
+		direccion,        // direccion
+		latStr,           // lat
+		lngStr,           // lng
+		comuna,           // comuna
 	); result.Error() != nil {
 		log.Printf("❌ [AlertaVecinal] Error insertando reclamo en MySQL: %v", result.Error())
 		return fmt.Errorf("error insertando reclamo: %v", result.Error())
@@ -242,27 +247,27 @@ func publishEstadoViaHTTP(reclamoID int, estado string) error {
 	if appPort == "" {
 		appPort = "8080"
 	}
-	
+
 	url := fmt.Sprintf("http://localhost:%s/reclamos/%d/estado", appPort, reclamoID)
-	
+
 	payload := map[string]string{
 		"estado":     estado,
 		"comentario": "Estado actualizado automáticamente desde módulo de Emergencias",
 	}
-	
+
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling payload: %v", err)
 	}
-	
+
 	// Crear request HTTP
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Ejecutar request con timeout
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
@@ -270,10 +275,10 @@ func publishEstadoViaHTTP(reclamoID int, estado string) error {
 		return fmt.Errorf("error executing request: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }

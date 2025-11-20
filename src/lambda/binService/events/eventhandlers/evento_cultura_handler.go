@@ -145,8 +145,8 @@ func EventoCulturaHandler(d amqp.Delivery) error {
 	// Insertar en MongoDB con coordenadas INVERTIDAS
 	tachoDoc := map[string]interface{}{
 		"id":        mongoID,
-		"lat":       lng, // INVERTIDO: guardamos lng en campo lat
-		"lon":       lat, // INVERTIDO: guardamos lat en campo lon
+		"lat":       lng,      // INVERTIDO: guardamos lng en campo lat
+		"lon":       lat,      // INVERTIDO: guardamos lat en campo lon
 		"id_evento": idEvento, // ID del evento cultural
 	}
 
