@@ -233,6 +233,10 @@ const (
 	// Navegación de rutas - Progreso en tiempo real
 	RoutingKeyRutaNavegacion = "residuos.camion.posicion"
 
+	// Emergencias - Respuesta a BI
+	RoutingKeyEmergenciaResuelta  = "residuos.bi.resuelta"
+	RoutingKeyEmergenciaPendiente = "residuos.bi.pendiente"
+
 	// ===== EVENTOS QUE CONSUME RESIDUOS (de otros equipos) =====
 
 	// De Reclamos - Formato antiguo (deprecar si es necesario)
@@ -246,10 +250,8 @@ const (
 	RoutingKeyReclamoResiduoDerivado = "reclamos.residuos.derivado"
 
 	// De Emergencias
-	RoutingKeyAlertaPendiente = "emergencias.alertavecinal.pendiente"
-
-	// De Conductores
-	RoutingKeyRecoleccionCompletada = "conductores.recoleccion.completada"
+	RoutingKeyAlertaPendiente          = "emergencias.alerta.pendiente" // Cambiado de alertavecinal a alerta
+	RoutingKeyEmergenciaAlertaResuelta = "emergencias.alerta.resuelta"  // Cuando la emergencia se resuelve
 
 	// De Cultura
 	RoutingKeyEventoCulturaCrear    = "cultura.evento.crear"

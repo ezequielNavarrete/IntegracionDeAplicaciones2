@@ -241,7 +241,9 @@ func extractSimplifiedRoutes(response map[string]interface{}, neighborhood int) 
 
 					lat, _ := coordMap["lat"].(float64)
 					lon, _ := coordMap["lon"].(float64)
-					pathCoords = append(pathCoords, Coordinate{Lat: lat, Lon: lon})
+					// Servicio externo devuelve coordenadas invertidas, las intercambiamos
+					latReal, lonReal := SwapCoordinates(lat, lon)
+					pathCoords = append(pathCoords, Coordinate{Lat: latReal, Lon: lonReal})
 				}
 			}
 		}
@@ -272,7 +274,9 @@ func extractSimplifiedRoutes(response map[string]interface{}, neighborhood int) 
 				if coords, ok := binMap["coordinates"].(map[string]interface{}); ok {
 					lat, _ := coords["lat"].(float64)
 					lon, _ := coords["lon"].(float64)
-					binsCoords = append(binsCoords, Coordinate{Lat: lat, Lon: lon})
+					// Servicio externo devuelve coordenadas invertidas, las intercambiamos
+					latReal, lonReal := SwapCoordinates(lat, lon)
+					binsCoords = append(binsCoords, Coordinate{Lat: latReal, Lon: lonReal})
 				}
 			}
 		}

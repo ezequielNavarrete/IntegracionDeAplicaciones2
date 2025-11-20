@@ -76,6 +76,12 @@ func processReclamoPayload(payload schemas.ReclamoResiduoPayload) error {
 		lng = 0.0
 	}
 
+	// INVERTIR coordenadas para mantener consistencia con la BD
+	log.Printf("Coordenadas originales - lat: %v, lng: %v", lat, lng)
+	latInvertido := lng // INVERTIDO
+	lngInvertido := lat // INVERTIDO
+	log.Printf("Guardando invertidas en MySQL - lat: %v, lng: %v", latInvertido, lngInvertido)
+
 	// 4. Validar que tengamos conexión a MySQL
 	if config.DB == nil {
 		return fmt.Errorf("database connection not available")
@@ -92,7 +98,7 @@ func processReclamoPayload(payload schemas.ReclamoResiduoPayload) error {
 		fecha = time.Now()
 	}
 
-	// 6. Insertar reclamo en MySQL
+	// 6. Insertar reclamo en MySQL con coordenadas INVERTIDAS
 	query := `
 		INSERT INTO Reclamos (id_persona, id_subcategoria, titulo, descripcion, prioridad, estado, direccion, lat, lng, fecha, id_reclamo_externo)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -106,8 +112,8 @@ func processReclamoPayload(payload schemas.ReclamoResiduoPayload) error {
 		prioridad,
 		"Pendiente", // Estado inicial
 		payload.Direccion,
-		lat,
-		lng,
+		latInvertido, // INVERTIDO
+		lngInvertido, // INVERTIDO
 		fecha,
 		payload.IDReclamo, // id_reclamo_externo - ID del reclamo en el sistema de Reclamos
 	)
