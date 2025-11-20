@@ -1,12 +1,20 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events/schemas"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/services"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // RouteNavigationResponse representa la respuesta de navegación punto a punto
@@ -98,6 +106,12 @@ func GetRouteNavigationHandler(c *gin.Context) {
 		response.PreviousKey = fmt.Sprintf("/v2/ruta-navegacion/%d/%d?index=%d", neighborhood, routeNumber, currentIndex-1)
 	}
 
+	// Publicar evento de navegación (no bloquear si falla)
+	eventosIDs := getEventosIDsFromCurrentPoint(response.CurrentPoint)
+	if err := publishRutaNavegacionEvent(c, route.RouteID, currentIndex, len(route.BinsCoords), response.CurrentPoint, eventosIDs); err != nil {
+		log.Printf("⚠️  Error publicando evento de navegación: %v", err)
+	}
+
 	c.JSON(http.StatusOK, response)
 }
 
@@ -185,6 +199,12 @@ func GetRouteNavigationByHeaderHandler(c *gin.Context) {
 		response.PreviousKey = fmt.Sprintf("/v2/ruta-navegacion-by-header?index=%d", currentIndex-1)
 	}
 
+	// Publicar evento de navegación (no bloquear si falla)
+	eventosIDs := getEventosIDsFromCurrentPoint(response.CurrentPoint)
+	if err := publishRutaNavegacionEvent(c, route.RouteID, currentIndex, len(route.BinsCoords), response.CurrentPoint, eventosIDs); err != nil {
+		log.Printf("⚠️  Error publicando evento de navegación: %v", err)
+	}
+
 	c.JSON(http.StatusOK, response)
 }
 
@@ -221,4 +241,113 @@ func GetRouteStartByHeaderHandler(c *gin.Context) {
 	// Redirigir a la navegación con index 0
 	c.Request.URL.RawQuery = "index=0"
 	GetRouteNavigationByHeaderHandler(c)
+}
+
+// publishRutaNavegacionEvent publica el evento de progreso de navegación
+func publishRutaNavegacionEvent(c *gin.Context, routeID string, currentIndex, totalPoints int, currentPoint *services.Coordinate, eventosIDs []string) error {
+	ctx := c.Request.Context()
+
+	// Crear array de información adicional con los IDs de eventos
+	informacionAdicional := make([]schemas.InformacionEvento, 0, len(eventosIDs))
+	for _, idEvento := range eventosIDs {
+		informacionAdicional = append(informacionAdicional, schemas.InformacionEvento{
+			IDEvento: idEvento,
+		})
+	}
+
+	// Calcular porcentaje de progreso
+	porcentajeProgreso := 0.0
+	if totalPoints > 1 {
+		porcentajeProgreso = float64(currentIndex) / float64(totalPoints-1) * 100
+	}
+
+	// Crear payload
+	payload := schemas.RutaNavegacionPayload{
+		IDRuta:            routeID,
+		IndicePuntoActual: currentIndex,
+		TotalPuntos:       totalPoints,
+		PuntoActual: schemas.PuntoNavegacion{
+			Latitud:  currentPoint.Lat,
+			Longitud: currentPoint.Lon,
+		},
+		PorcentajeProgreso:   porcentajeProgreso,
+		InformacionAdicional: informacionAdicional,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// Crear envelope estándar
+	envelope := schemas.EventEnvelope{
+		ID:        uuid.New().String(),
+		Timestamp: time.Now(),
+		Source:    "residuos",
+		Topic:     schemas.RoutingKeyRutaNavegacion,
+		Payload:   payloadBytes,
+	}
+
+	// Publicar evento
+	if err := events.Publish(ctx, schemas.RoutingKeyRutaNavegacion, envelope); err != nil {
+		return err
+	}
+
+	log.Printf("✅ [RutaNavegacion] Evento publicado - Routing Key: %s", schemas.RoutingKeyRutaNavegacion)
+	log.Printf("   📍 Ruta: %s | Punto: %d/%d (%.2f%%)", routeID, currentIndex+1, totalPoints, porcentajeProgreso)
+	if len(eventosIDs) > 0 {
+		log.Printf("   🎭 Eventos culturales en este punto: %v", eventosIDs)
+	}
+
+	return nil
+}
+
+// getEventosIDsFromCurrentPoint obtiene los IDs de eventos culturales del punto actual
+// buscando en MongoDB los tachos en esas coordenadas que tengan id_evento
+func getEventosIDsFromCurrentPoint(point *services.Coordinate) []string {
+	if point == nil {
+		return []string{}
+	}
+
+	// Obtener colección de MongoDB
+	mongoCollection, err := config.GetMongoCollection("tachos")
+	if err != nil {
+		log.Printf("Error obteniendo colección MongoDB: %v", err)
+		return []string{}
+	}
+
+	ctx := context.Background()
+
+	// Buscar tachos en las coordenadas exactas que tengan id_evento
+	filter := map[string]interface{}{
+		"lat": point.Lat,
+		"lon": point.Lon,
+		"id_evento": map[string]interface{}{
+			"$exists": true,
+			"$ne":     "",
+		},
+	}
+
+	cursor, err := mongoCollection.Find(ctx, filter)
+	if err != nil {
+		log.Printf("Error buscando tachos con eventos: %v", err)
+		return []string{}
+	}
+	defer cursor.Close(ctx)
+
+	// Extraer los IDs de eventos
+	eventosIDs := []string{}
+	for cursor.Next(ctx) {
+		var tacho map[string]interface{}
+		if err := cursor.Decode(&tacho); err != nil {
+			log.Printf("Error decodificando tacho: %v", err)
+			continue
+		}
+
+		if idEvento, ok := tacho["id_evento"].(string); ok && idEvento != "" {
+			eventosIDs = append(eventosIDs, idEvento)
+		}
+	}
+
+	return eventosIDs
 }

@@ -131,11 +131,18 @@ func EventoCulturaHandler(d amqp.Delivery) error {
 		mongoID = lastTacho.ID + 1
 	}
 
+	// Extraer el ID del evento cultural
+	idEvento := getStringValue(payloadMap, "_id")
+	if idEvento == "" {
+		idEvento = getStringValue(payloadMap, "id")
+	}
+
 	// Insertar en MongoDB con el formato correcto
 	tachoDoc := map[string]interface{}{
-		"id":  mongoID,
-		"lat": lat,
-		"lon": lng,
+		"id":        mongoID,
+		"lat":       lat,
+		"lon":       lng,
+		"id_evento": idEvento, // ID del evento cultural
 	}
 
 	_, err = mongoCollection.InsertOne(ctx, tachoDoc)

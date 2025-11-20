@@ -1,7 +1,6 @@
 package eventhandlers
 
 import (
-	"encoding/json"
 	"log"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events/schemas"
@@ -84,21 +83,11 @@ func ProcessMessage(d amqp.Delivery) {
 	// Ejecutar el handler
 	if err := handler(d); err != nil {
 		log.Printf("❌ Error procesando mensaje [%s]: %v", d.RoutingKey, err)
-
-		// Si es error de JSON inválido, descartar el mensaje (NO reencolar)
-		if _, ok := err.(*json.SyntaxError); ok {
-			log.Printf("🗑️  Mensaje descartado: JSON mal formado")
-			d.Ack(false)
-			return
-		}
-		if _, ok := err.(*json.UnmarshalTypeError); ok {
-			log.Printf("🗑️  Mensaje descartado: JSON mal formado")
-			d.Ack(false)
-			return
-		}
-
-		// Para otros errores, reencolar
-		d.Nack(false, true)
+		log.Printf("🗑️  Mensaje descartado (NO se reencola): %s", string(d.Body))
+		
+		// Hacer NACK sin reencolar (requeue = false)
+		// Esto descarta el mensaje definitivamente
+		d.Nack(false, false) // multiple=false, requeue=false
 		return
 	}
 
