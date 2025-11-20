@@ -208,6 +208,14 @@ type EventoCulturaPayload struct {
 	Place string `json:"place,omitempty"`
 }
 
+// EventoCulturaCanceladoPayload es el payload para eventos culturales cancelados
+type EventoCulturaCanceladoPayload struct {
+	IDEvento  string  `json:"id_evento"`
+	Longitude float64 `json:"longitude"`
+	Latitude  float64 `json:"latitude"`
+	Status    string  `json:"status"`
+}
+
 // ========== ROUTING KEYS ==========
 
 const (
