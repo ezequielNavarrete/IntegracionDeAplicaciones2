@@ -257,4 +257,7 @@ const (
 	// De Cultura
 	RoutingKeyEventoCulturaCrear    = "cultura.evento.crear"
 	RoutingKeyEventoCulturaCancelar = "cultura.evento.cancelado"
+
+	// De Movilidad
+	RoutingKeyMovilidadAlertaCamino = "movilidad.alerta.camino"
 )
