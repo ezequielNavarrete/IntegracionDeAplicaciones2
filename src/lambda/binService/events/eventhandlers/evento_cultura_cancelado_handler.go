@@ -54,15 +54,15 @@ func EventoCulturaCanceladoHandler(d amqp.Delivery) error {
 		log.Printf("❌ [EventoCulturaCancelado] Error obteniendo colección: %v", err)
 		return fmt.Errorf("error obteniendo colección: %v", err)
 	}
-	
+
 	filter := bson.M{"id_evento": payload.IDEvento}
 	update := bson.M{
 		"$set": bson.M{
-			"estado": "fuera_de_servicio",
+			"estado":             "fuera_de_servicio",
 			"motivo_cancelacion": payload.Status,
 		},
 	}
-	
+
 	ctx := context.Background()
 	result, err := tachosCollection.UpdateMany(ctx, filter, update)
 	if err != nil {
@@ -73,9 +73,9 @@ func EventoCulturaCanceladoHandler(d amqp.Delivery) error {
 	tachoIDsMongo := []int{} // Para trackear qué tachos actualizar en MySQL
 
 	if result.ModifiedCount > 0 {
-		log.Printf("✅ [EventoCulturaCancelado] Tacho(s) fake puesto(s) fuera de servicio en MongoDB: %d (id_evento: %s)", 
+		log.Printf("✅ [EventoCulturaCancelado] Tacho(s) fake puesto(s) fuera de servicio en MongoDB: %d (id_evento: %s)",
 			result.ModifiedCount, payload.IDEvento)
-			
+
 		// Obtener los id_mongo de los tachos actualizados para actualizar MySQL
 		cursor, err := tachosCollection.Find(ctx, filter)
 		if err == nil {
@@ -91,23 +91,23 @@ func EventoCulturaCanceladoHandler(d amqp.Delivery) error {
 		}
 	} else {
 		log.Printf("⚠️  [EventoCulturaCancelado] No se encontró tacho fake con id_evento: %s", payload.IDEvento)
-		
+
 		// Intentar buscar por coordenadas como fallback
 		coordFilter := bson.M{
-			"lat": payload.Longitude, // MongoDB tiene invertidas las coordenadas
-			"lon": payload.Latitude,  // MongoDB tiene invertidas las coordenadas
-			"id_tipo": 4, // Tachos fake de eventos culturales
+			"lat":     payload.Longitude, // MongoDB tiene invertidas las coordenadas
+			"lon":     payload.Latitude,  // MongoDB tiene invertidas las coordenadas
+			"id_tipo": 4,                 // Tachos fake de eventos culturales
 		}
-		
+
 		coordResult, coordErr := tachosCollection.UpdateMany(ctx, coordFilter, update)
 		if coordErr != nil {
 			log.Printf("❌ [EventoCulturaCancelado] Error buscando por coordenadas: %v", coordErr)
 			return fmt.Errorf("error buscando por coordenadas: %v", coordErr)
 		}
-		
+
 		if coordResult.ModifiedCount > 0 {
 			log.Printf("✅ [EventoCulturaCancelado] Tacho(s) fake puesto(s) fuera de servicio por coordenadas en MongoDB: %d", coordResult.ModifiedCount)
-			
+
 			// Obtener los id_mongo de los tachos actualizados
 			cursor, err := tachosCollection.Find(ctx, coordFilter)
 			if err == nil {
@@ -129,7 +129,7 @@ func EventoCulturaCanceladoHandler(d amqp.Delivery) error {
 	// 2. Actualizar en MySQL los tachos correspondientes (id_estado = 4: fuera de servicio)
 	if len(tachoIDsMongo) > 0 {
 		log.Printf("📝 [EventoCulturaCancelado] Actualizando %d tacho(s) en MySQL...", len(tachoIDsMongo))
-		
+
 		// Construir query para actualizar múltiples tachos
 		query := "UPDATE Tacho SET id_estado = 4 WHERE id_mongo IN ("
 		for i := range tachoIDsMongo {
@@ -139,13 +139,13 @@ func EventoCulturaCanceladoHandler(d amqp.Delivery) error {
 			query += "?"
 		}
 		query += ")"
-		
+
 		// Convertir slice a []interface{} para los parámetros
 		params := make([]interface{}, len(tachoIDsMongo))
 		for i, id := range tachoIDsMongo {
 			params[i] = id
 		}
-		
+
 		if result := config.DB.Exec(query, params...); result.Error() != nil {
 			log.Printf("⚠️  [EventoCulturaCancelado] Error actualizando MySQL: %v", result.Error())
 			// No retornamos error porque MongoDB ya se actualizó
