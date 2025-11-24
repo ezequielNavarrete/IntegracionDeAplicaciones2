@@ -469,7 +469,7 @@ const docTemplate = `{
         },
         "/enviar-emergencia": {
             "post": {
-                "description": "Registra una nueva emergencia en el sistema",
+                "description": "Registra una nueva emergencia en el sistema y publica evento a RabbitMQ",
                 "consumes": [
                     "application/json"
                 ],
@@ -2210,6 +2210,18 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Incendio en edificio de oficinas"
                 },
+                "latitud": {
+                    "type": "number",
+                    "example": -34.6037
+                },
+                "longitud": {
+                    "type": "number",
+                    "example": -58.3816
+                },
+                "prioridad": {
+                    "type": "string",
+                    "example": "alta"
+                },
                 "tipo": {
                     "type": "string",
                     "example": "incendio"
@@ -2222,6 +2234,10 @@ const docTemplate = `{
                 "descripcion": {
                     "type": "string",
                     "example": "Incendio en edificio de oficinas"
+                },
+                "id_alerta": {
+                    "type": "string",
+                    "example": "12345"
                 },
                 "message": {
                     "type": "string",
@@ -2748,6 +2764,10 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "prioridad": {
+                    "type": "string"
+                },
+                "tipo_origen": {
+                    "description": "'reclamo' o 'emergencia'",
                     "type": "string"
                 },
                 "titulo": {

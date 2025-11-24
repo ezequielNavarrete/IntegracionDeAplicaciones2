@@ -13,8 +13,8 @@ import (
 var (
 	instance         *EventClient
 	once             sync.Once
-	reconnectDelay   = 30 * time.Second // Reconexión cada 30 segundos
-	maxInitAttempts  = 3                // Solo 3 intentos al inicio
+	reconnectDelay   = 5 * time.Second // Reconexión cada 30 segundos
+	maxInitAttempts  = 3               // Solo 3 intentos al inicio
 	rabbitmqURL      string
 	rabbitmqExchange string
 )

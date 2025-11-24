@@ -21,6 +21,15 @@ definitions:
       descripcion:
         example: Incendio en edificio de oficinas
         type: string
+      latitud:
+        example: -34.6037
+        type: number
+      longitud:
+        example: -58.3816
+        type: number
+      prioridad:
+        example: alta
+        type: string
       tipo:
         example: incendio
         type: string
@@ -29,6 +38,9 @@ definitions:
     properties:
       descripcion:
         example: Incendio en edificio de oficinas
+        type: string
+      id_alerta:
+        example: "12345"
         type: string
       message:
         example: Emergencia enviada correctamente
@@ -389,6 +401,9 @@ definitions:
       lng:
         type: number
       prioridad:
+        type: string
+      tipo_origen:
+        description: '''reclamo'' o ''emergencia'''
         type: string
       titulo:
         type: string
@@ -804,7 +819,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Registra una nueva emergencia en el sistema
+      description: Registra una nueva emergencia en el sistema y publica evento a
+        RabbitMQ
       parameters:
       - description: Datos de la emergencia
         in: body

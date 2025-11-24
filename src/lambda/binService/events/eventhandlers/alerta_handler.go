@@ -2,6 +2,7 @@ package eventhandlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,7 +11,9 @@ import (
 	"time"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events/schemas"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // AlertaVecinalHandler maneja alertas de emergencias (pendientes)
@@ -23,6 +26,37 @@ func AlertaVecinalHandler(d amqp.Delivery) error {
 // Cambia el estado a ESPERA_INFO sin disparar evento (se dispara al cambio manual a RESUELTO)
 func AlertaResueltaHandler(d amqp.Delivery) error {
 	return handleEmergenciaAlert(d, "ESPERA_INFO", false) // false = no publicar evento
+}
+
+// ProcessAlertaVecinalDirect procesa una alerta vecinal directamente sin RabbitMQ
+// Para ser llamado desde endpoints HTTP
+func ProcessAlertaVecinalDirect(alerta schemas.AlertaVecinalEvent, estadoForzado string, publicarEvento bool) error {
+	log.Println("========================================")
+	log.Printf("🚨 Emergencia recibida directamente - Estado: %s", estadoForzado)
+	log.Println("========================================")
+
+	// Extraer datos del evento
+	idEmergencia := alerta.ID
+	tipoEmergencia := alerta.TipoEmergencia
+	prioridad := alerta.Prioridad
+	estado := alerta.Estado
+	lat := alerta.Ubicacion.Lat
+	lng := alerta.Ubicacion.Lon
+
+	// Contexto por defecto
+	contexto := "Reporte directo desde sistema"
+
+	var comuna *int
+	// El campo comuna no existe en AlertaVecinalEvent, lo dejamos nil
+
+	log.Println("Datos de la emergencia:")
+	log.Printf("  - ID Emergencia: %s", idEmergencia)
+	log.Printf("  - Tipo: %s", tipoEmergencia)
+	log.Printf("  - Prioridad: %s", prioridad)
+	log.Printf("  - Estado: %s", estado)
+	log.Printf("  - Coordenadas: lat=%v, lng=%v", lat, lng)
+
+	return processEmergencia(idEmergencia, tipoEmergencia, prioridad, estado, contexto, lat, lng, comuna, estadoForzado, publicarEvento, "")
 }
 
 // handleEmergenciaAlert es el handler común para ambos tipos de alertas
@@ -80,6 +114,15 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string, publicarEvento
 		return fmt.Errorf("id_emergencia es requerido")
 	}
 
+	return processEmergencia(idEmergencia, tipoEmergencia, prioridad, estado, contexto, lat, lng, comuna, estadoForzado, publicarEvento, idReclamo)
+}
+
+// processEmergencia contiene la lógica común para procesar emergencias
+func processEmergencia(idEmergencia, tipoEmergencia, prioridad, estado, contexto string, lat, lng float64, comuna *int, estadoReclamo string, publicarEvento bool, idReclamo string) error {
+	// INVERTIR coordenadas para mantener consistencia con la BD
+	latStr := fmt.Sprintf("%v", lng) // INVERTIDO
+	lngStr := fmt.Sprintf("%v", lat) // INVERTIDO
+
 	// Crear título y descripción para el reclamo
 	titulo := fmt.Sprintf("Emergencia: %s", tipoEmergencia)
 	descripcion := fmt.Sprintf("Alerta - Tipo: %s | Contexto: %s | Prioridad: %s | Estado: %s",
@@ -87,15 +130,26 @@ func handleEmergenciaAlert(d amqp.Delivery, estadoForzado string, publicarEvento
 
 	direccion := fmt.Sprintf("Lat: %v, Lng: %v", lat, lng)
 
-	// INVERTIR coordenadas para mantener consistencia con la BD
-	log.Printf("Coordenadas originales - lat: %v, lng: %v", lat, lng)
-	log.Printf("Guardando invertidas en MySQL - lat: %v, lng: %v", lng, lat)
+	// PASO 1: Crear tacho fake en MongoDB
+	mongoID, err := createFakeTachoMongo(idEmergencia, lat, lng)
+	if err != nil {
+		log.Printf("❌ [Emergencia] Error creando tacho fake en MongoDB: %v", err)
+		// Continuar sin tacho fake
+		mongoID = 0
+	}
 
-	latStr := fmt.Sprintf("%v", lng) // INVERTIDO
-	lngStr := fmt.Sprintf("%v", lat) // INVERTIDO
-
-	// El estado viene determinado por el routing key (pendiente=EN_PROCESO, resuelto=RESUELTO)
-	estadoReclamo := estadoForzado
+	// PASO 2: Crear tacho fake en MySQL (si se creó en MongoDB)
+	var idTachoMySQL int
+	if mongoID > 0 {
+		idTachoMySQL, err = createFakeTachoMySQL(mongoID)
+		if err != nil {
+			log.Printf("❌ [Emergencia] Error creando tacho fake en MySQL: %v", err)
+			// Continuar sin tacho en MySQL
+			idTachoMySQL = 0
+		} else {
+			log.Printf("✅ [Emergencia] Tacho fake creado - MongoDB ID: %d, MySQL ID: %d", mongoID, idTachoMySQL)
+		}
+	}
 
 	// Verificar si ya existe un reclamo con este id_emergencia (guardado en descripcion)
 	var existingReclamo struct {
@@ -281,4 +335,79 @@ func publishEstadoViaHTTP(reclamoID int, estado string) error {
 	}
 
 	return nil
+}
+
+// createFakeTachoMongo crea un tacho fake en MongoDB para emergencias
+func createFakeTachoMongo(idEmergencia string, lat, lng float64) (int, error) {
+	mongoCollection, err := config.GetMongoCollection("bins")
+	if err != nil {
+		return 0, fmt.Errorf("error getting mongo collection: %v", err)
+	}
+
+	// Obtener el último ID de MongoDB para generar uno nuevo
+	ctx := context.Background()
+	var lastTacho struct {
+		ID int `bson:"id"`
+	}
+	opts := options.FindOne().SetSort(map[string]int{"id": -1})
+	err = mongoCollection.FindOne(ctx, map[string]interface{}{}, opts).Decode(&lastTacho)
+
+	mongoID := 1 // ID por defecto si no hay documentos
+	if err == nil {
+		mongoID = lastTacho.ID + 1
+	}
+
+	// INVERTIR coordenadas para mantener consistencia con tachos existentes
+	// MongoDB espera {lat: lng, lon: lat} invertido
+	log.Printf("🗺️  [Emergencia] Guardando en MongoDB - lat: %v, lon: %v (invertido)", lng, lat)
+
+	// Insertar en MongoDB con coordenadas INVERTIDAS
+	tachoDoc := map[string]interface{}{
+		"id":            mongoID,
+		"lat":           lng,          // INVERTIDO
+		"lon":           lat,          // INVERTIDO
+		"id_emergencia": idEmergencia, // ID de la emergencia
+	}
+
+	_, err = mongoCollection.InsertOne(ctx, tachoDoc)
+	if err != nil {
+		return 0, fmt.Errorf("error inserting in MongoDB: %v", err)
+	}
+
+	log.Printf("✅ [Emergencia] Tacho fake creado en MongoDB - ID: %d", mongoID)
+	return mongoID, nil
+}
+
+// createFakeTachoMySQL crea un tacho fake en MySQL vinculado al tacho de MongoDB
+func createFakeTachoMySQL(mongoID int) (int, error) {
+	if config.DB == nil {
+		return 0, fmt.Errorf("database connection not available")
+	}
+
+	// id_tipo = 7 para emergencias (ajusta según tu BD)
+	// id_estado = 1 para activo
+	query := `
+		INSERT INTO Tacho (id_tipo, id_estado, id_mongo, capacidad) 
+		VALUES (?, ?, ?, ?)
+	`
+
+	result := config.DB.Exec(query,
+		7,       // id_tipo = 7 (emergencia) - ajusta según tu esquema
+		1,       // id_estado = 1 (activo)
+		mongoID, // ID del documento de MongoDB
+		100.0,   // capacidad por defecto
+	)
+
+	if result.Error() != nil {
+		return 0, fmt.Errorf("error inserting tacho: %v", result.Error())
+	}
+
+	// Obtener el ID generado
+	var tachoID int64
+	if result := config.DB.Raw("SELECT LAST_INSERT_ID()").Scan(&tachoID); result.Error() != nil {
+		return 0, fmt.Errorf("error getting inserted ID: %v", result.Error())
+	}
+
+	log.Printf("✅ [Emergencia] Tacho fake creado en MySQL - ID: %d", tachoID)
+	return int(tachoID), nil
 }

@@ -243,17 +243,17 @@ func GetAllTachos() ([]TachoCompleto, error) {
 				Caracteristicas: []CaracteristicaTacho{},
 			}
 
-		// Buscar coordenadas en MongoDB
-		if mongoData, found := coordsMap[row.IDMongo]; found {
-			// MongoDB tiene coordenadas invertidas, las intercambiamos antes de devolver
-			latReal, lonReal := SwapCoordinates(mongoData.Lat, mongoData.Lon)
-			tacho.Latitud = latReal
-			tacho.Longitud = lonReal
-			tacho.Neighborhood = mongoData.Neighborhood
-		}
+			// Buscar coordenadas en MongoDB
+			if mongoData, found := coordsMap[row.IDMongo]; found {
+				// MongoDB tiene coordenadas invertidas, las intercambiamos antes de devolver
+				latReal, lonReal := SwapCoordinates(mongoData.Lat, mongoData.Lon)
+				tacho.Latitud = latReal
+				tacho.Longitud = lonReal
+				tacho.Neighborhood = mongoData.Neighborhood
+			}
 
-		tachosMap[row.IDTacho] = tacho
-	}		// Agregar característica si existe
+			tachosMap[row.IDTacho] = tacho
+		} // Agregar característica si existe
 		if row.CaracteristicaNombre != nil && row.CaracteristicaEstado != nil && row.CaracteristicaPrioridad != nil {
 			caracteristica := CaracteristicaTacho{
 				Nombre:    *row.CaracteristicaNombre,
