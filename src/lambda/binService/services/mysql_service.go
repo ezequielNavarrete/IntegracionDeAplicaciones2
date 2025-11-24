@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 )
@@ -268,6 +269,11 @@ func GetAllTachos() ([]TachoCompleto, error) {
 	for _, tacho := range tachosMap {
 		tachos = append(tachos, *tacho)
 	}
+
+	// Ordenar por IDTacho
+	sort.Slice(tachos, func(i, j int) bool {
+		return tachos[i].IDTacho < tachos[j].IDTacho
+	})
 
 	return tachos, nil
 }
