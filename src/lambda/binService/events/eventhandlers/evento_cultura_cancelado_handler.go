@@ -1,88 +1,162 @@
 package eventhandlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 
+	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/config"
 	"github.com/ezequielNavarrete/IntegracionDeAplicaciones2/src/lambda/binService/events/schemas"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // EventoCulturaCanceladoHandler maneja eventos de cancelación de eventos culturales
-// Por ahora solo loguea el evento completo para entender la estructura del payload
-// TODO: Una vez conocida la estructura, implementar lógica correspondiente (ej: eliminar tacho fake con id_tipo = 4)
+// Elimina el tacho fake asociado al evento usando id_evento o coordenadas
 func EventoCulturaCanceladoHandler(d amqp.Delivery) error {
 	log.Println("========================================")
 	log.Println("🚫 Evento cultura.evento.cancelado recibido")
 	log.Println("========================================")
 
-	// Loguear el body completo primero
 	log.Printf("📄 Body raw: %s", string(d.Body))
 
-	// Intentar parsear como envelope estándar primero
+	// Parsear envelope estándar
 	var envelope schemas.EventEnvelope
 	if err := json.Unmarshal(d.Body, &envelope); err != nil {
 		log.Printf("❌ [EventoCulturaCancelado] Error parseando envelope: %v", err)
 		return fmt.Errorf("error parsing envelope: %v", err)
 	}
 
-	// Verificar si el envelope tiene datos válidos
-	if envelope.ID == "" && envelope.Source == "" && envelope.Topic == "" {
-		log.Println("⚠️  [EventoCulturaCancelado] Envelope vacío - cultura NO está usando formato estándar")
-		log.Println("📦 El payload está directamente en el body (sin envelope)")
+	log.Printf("📦 Envelope ID: %s", envelope.ID)
+	log.Printf("📦 Source: %s", envelope.Source)
+	log.Printf("📦 Topic: %s", envelope.Topic)
 
-		// El body ES el payload directamente
-		var payloadMap map[string]interface{}
-		if err := json.Unmarshal(d.Body, &payloadMap); err != nil {
-			log.Printf("❌ [EventoCulturaCancelado] Error parseando payload directo: %v", err)
-			return err
-		}
+	// Parsear payload
+	var payload schemas.EventoCulturaCanceladoPayload
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		log.Printf("❌ [EventoCulturaCancelado] Error parseando payload: %v", err)
+		return fmt.Errorf("error parsing payload: %v", err)
+	}
 
-		// Loguear cada campo del payload
-		log.Println("📋 Campos del payload (sin envelope):")
-		for key, value := range payloadMap {
-			log.Printf("  - %s: %v (tipo: %T)", key, value, value)
+	log.Printf("📋 ID Evento: %s", payload.IDEvento)
+	log.Printf("📋 Coordenadas: lat=%v, lng=%v", payload.Latitude, payload.Longitude)
+	log.Printf("📋 Status: %s", payload.Status)
+
+	if payload.IDEvento == "" {
+		log.Println("❌ [EventoCulturaCancelado] ID de evento faltante")
+		return fmt.Errorf("id_evento es requerido")
+	}
+
+	// 1. Buscar y actualizar tacho fake en MongoDB por id_evento (ponerlo fuera de servicio)
+	tachosCollection, err := config.GetMongoCollection("tachos")
+	if err != nil {
+		log.Printf("❌ [EventoCulturaCancelado] Error obteniendo colección: %v", err)
+		return fmt.Errorf("error obteniendo colección: %v", err)
+	}
+	
+	filter := bson.M{"id_evento": payload.IDEvento}
+	update := bson.M{
+		"$set": bson.M{
+			"estado": "fuera_de_servicio",
+			"motivo_cancelacion": payload.Status,
+		},
+	}
+	
+	ctx := context.Background()
+	result, err := tachosCollection.UpdateMany(ctx, filter, update)
+	if err != nil {
+		log.Printf("❌ [EventoCulturaCancelado] Error actualizando tacho fake en MongoDB: %v", err)
+		return fmt.Errorf("error actualizando tacho fake en MongoDB: %v", err)
+	}
+
+	tachoIDsMongo := []int{} // Para trackear qué tachos actualizar en MySQL
+
+	if result.ModifiedCount > 0 {
+		log.Printf("✅ [EventoCulturaCancelado] Tacho(s) fake puesto(s) fuera de servicio en MongoDB: %d (id_evento: %s)", 
+			result.ModifiedCount, payload.IDEvento)
+			
+		// Obtener los id_mongo de los tachos actualizados para actualizar MySQL
+		cursor, err := tachosCollection.Find(ctx, filter)
+		if err == nil {
+			defer cursor.Close(ctx)
+			for cursor.Next(ctx) {
+				var tacho struct {
+					IDMongo int `bson:"_id"`
+				}
+				if err := cursor.Decode(&tacho); err == nil {
+					tachoIDsMongo = append(tachoIDsMongo, tacho.IDMongo)
+				}
+			}
 		}
 	} else {
-		// Envelope válido - procesar normalmente
-		log.Printf("📦 Envelope ID: %s", envelope.ID)
-		log.Printf("📦 Timestamp: %s", envelope.Timestamp)
-		log.Printf("📦 Source: %s", envelope.Source)
-		log.Printf("📦 Topic: %s", envelope.Topic)
-
-		// Loguear el payload completo como string
-		payloadBytes, err := json.Marshal(envelope.Payload)
-		if err != nil {
-			log.Printf("❌ Error serializando payload: %v", err)
-			return err
+		log.Printf("⚠️  [EventoCulturaCancelado] No se encontró tacho fake con id_evento: %s", payload.IDEvento)
+		
+		// Intentar buscar por coordenadas como fallback
+		coordFilter := bson.M{
+			"lat": payload.Longitude, // MongoDB tiene invertidas las coordenadas
+			"lon": payload.Latitude,  // MongoDB tiene invertidas las coordenadas
+			"id_tipo": 4, // Tachos fake de eventos culturales
 		}
-		log.Printf("📦 Payload completo (JSON): %s", string(payloadBytes))
-
-		// Intentar parsear el payload como map para ver todos los campos
-		var payloadMap map[string]interface{}
-		if err := json.Unmarshal(envelope.Payload, &payloadMap); err != nil {
-			log.Printf("❌ Error parseando payload como map: %v", err)
-			return err
+		
+		coordResult, coordErr := tachosCollection.UpdateMany(ctx, coordFilter, update)
+		if coordErr != nil {
+			log.Printf("❌ [EventoCulturaCancelado] Error buscando por coordenadas: %v", coordErr)
+			return fmt.Errorf("error buscando por coordenadas: %v", coordErr)
 		}
+		
+		if coordResult.ModifiedCount > 0 {
+			log.Printf("✅ [EventoCulturaCancelado] Tacho(s) fake puesto(s) fuera de servicio por coordenadas en MongoDB: %d", coordResult.ModifiedCount)
+			
+			// Obtener los id_mongo de los tachos actualizados
+			cursor, err := tachosCollection.Find(ctx, coordFilter)
+			if err == nil {
+				defer cursor.Close(ctx)
+				for cursor.Next(ctx) {
+					var tacho struct {
+						IDMongo int `bson:"_id"`
+					}
+					if err := cursor.Decode(&tacho); err == nil {
+						tachoIDsMongo = append(tachoIDsMongo, tacho.IDMongo)
+					}
+				}
+			}
+		} else {
+			log.Printf("⚠️  [EventoCulturaCancelado] No se encontró tacho fake ni por id_evento ni por coordenadas")
+		}
+	}
 
-		// Loguear cada campo del payload con su tipo
-		log.Println("📋 Campos del payload:")
-		for key, value := range payloadMap {
-			log.Printf("  - %s: %v (tipo: %T)", key, value, value)
+	// 2. Actualizar en MySQL los tachos correspondientes (id_estado = 4: fuera de servicio)
+	if len(tachoIDsMongo) > 0 {
+		log.Printf("📝 [EventoCulturaCancelado] Actualizando %d tacho(s) en MySQL...", len(tachoIDsMongo))
+		
+		// Construir query para actualizar múltiples tachos
+		query := "UPDATE Tacho SET id_estado = 4 WHERE id_mongo IN ("
+		for i := range tachoIDsMongo {
+			if i > 0 {
+				query += ", "
+			}
+			query += "?"
+		}
+		query += ")"
+		
+		// Convertir slice a []interface{} para los parámetros
+		params := make([]interface{}, len(tachoIDsMongo))
+		for i, id := range tachoIDsMongo {
+			params[i] = id
+		}
+		
+		if result := config.DB.Exec(query, params...); result.Error() != nil {
+			log.Printf("⚠️  [EventoCulturaCancelado] Error actualizando MySQL: %v", result.Error())
+			// No retornamos error porque MongoDB ya se actualizó
+		} else {
+			log.Printf("✅ [EventoCulturaCancelado] Tachos actualizados en MySQL exitosamente")
 		}
 	}
 
 	log.Println("========================================")
-	log.Println("✅ Evento cultura cancelado procesado (solo logging)")
+	log.Println("✅ Evento cultura cancelado procesado")
 	log.Println("========================================")
 
-	// TODO: Una vez conocida la estructura del payload, implementar:
-	// 1. Parsear el payload a la estructura adecuada
-	// 2. Identificar el tacho fake asociado al evento (si existe)
-	// 3. Decidir la acción: eliminar el tacho fake, cambiar estado, etc.
-	// 4. Actualizar MySQL y MongoDB según corresponda
-
-	fmt.Printf("Evento cultura cancelado recibido y logueado correctamente\n")
-	return nil // ACK el mensaje
+	return nil
 }

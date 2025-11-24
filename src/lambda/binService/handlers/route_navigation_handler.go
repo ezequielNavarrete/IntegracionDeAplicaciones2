@@ -247,9 +247,12 @@ func GetRouteStartByHeaderHandler(c *gin.Context) {
 func publishRutaNavegacionEvent(c *gin.Context, routeID string, currentIndex, totalPoints int, currentPoint *services.Coordinate, eventosIDs []string) error {
 	ctx := c.Request.Context()
 
-	// Crear array de información adicional con los IDs de eventos
-	informacionAdicional := make([]schemas.InformacionEvento, 0, len(eventosIDs))
-	for _, idEvento := range eventosIDs {
+	// Hardcodear IDs de eventos culturales para testing
+	eventosIDsHardcoded := []string{"691f937a6fab2549f2258472", "68d44d2663d135b1b22cb971"}
+
+	// Crear array de información adicional con los IDs de eventos hardcodeados
+	informacionAdicional := make([]schemas.InformacionEvento, 0, len(eventosIDsHardcoded))
+	for _, idEvento := range eventosIDsHardcoded {
 		informacionAdicional = append(informacionAdicional, schemas.InformacionEvento{
 			IDEvento: idEvento,
 		})
